@@ -57,10 +57,8 @@ namespace trackerDTC {
     bool checkHistory_;
   };
 
-  ProducerED::ProducerED(const ParameterSet& iConfig) :
-    iConfig_(iConfig),
-    checkHistory_(iConfig.getParameter<bool>("CheckHistory"))
- {
+  ProducerED::ProducerED(const ParameterSet& iConfig)
+      : iConfig_(iConfig), checkHistory_(iConfig.getParameter<bool>("CheckHistory")) {
     // book in- and output ED products
     const auto& inputTag = iConfig.getParameter<InputTag>("InputTag");
     const auto& branchAccepted = iConfig.getParameter<string>("BranchAccepted");
@@ -90,7 +88,8 @@ namespace trackerDTC {
       Handle<TTStubDetSetVec> handle;
       iEvent.getByToken(edGetToken_, handle);
       // apply cabling map, reorganise stub collections
-      vector<vector<vector<TTStubRef>>> stubsDTCs(setup_.numDTCs(), vector<vector<TTStubRef>>(setup_.numModulesPerDTC()));
+      vector<vector<vector<TTStubRef>>> stubsDTCs(setup_.numDTCs(),
+                                                  vector<vector<TTStubRef>>(setup_.numModulesPerDTC()));
       for (auto module = handle->begin(); module != handle->end(); module++) {
         // DetSetVec->detId + 1 = tk layout det id
         const DetId detId = module->detId() + setup_.offsetDetIdDSV();
