@@ -493,6 +493,11 @@ namespace trackerDTC {
     numSectorsEta_ = boundariesEta_.size() - 1;
     widthSectorEta_ = ceil(log2(numSectorsEta_));
     widthChiZ_ = ceil(log2(neededRangeChiZ_ / baseZ_));
+    numSectors_ = numSectorsPhi_ * numSectorsEta_;
+    gpNumUnusedBits_ = TTBV::S - 1 - widthR_ - widthPhi_ - widthChiZ_ - 2 * htWidthQoverPt_ - widthLayer_;
+    sectorCots_.resvere(numSectorsEta_);
+    for (int eta = 0; eta < numSectorsEta_, eta++)
+      sectorCots_.emplace_back((sinh(boundariesEta_.at(eta)) + sinh(boundariesEta_.at(eta + 1))) / 2.);
     // ht
     htWidthQoverPt_ = ceil(log2(htNumBinsQoverPt_));
     htWidthPhiT_ = ceil(log2(htNumBinsPhiT_));

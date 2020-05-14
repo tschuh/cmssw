@@ -284,6 +284,12 @@ namespace trackerDTC {
     int widthSectorEta() const { return widthSectorEta_; }
     // number of bits to represent z residual w.r.t. sector center
     int widthChiZ() const { return widthChiZ_; }
+    // total number of sectors
+    int numSectors() const { return numSectors_; }
+    // number of unused bits in GP output format
+    int gpNumUnusedBits() const { return gpNumUnusedBits_; }
+    // cot(theta) of given eta sector
+    double sectorCot(int eta) const { return sectorCots_.at(eta); }
 
     // Parameter specifying HoughTransform
 
@@ -845,6 +851,12 @@ namespace trackerDTC {
     int widthSectorEta_;
     // number of bits to represent z residual w.r.t. sector center
     int widthChiZ_;
+    // total number of sectors
+    int numSectors_;
+    // number of unused bits in GP output format
+    int gpNumUnusedBits_;
+    // cot(theta) of eta sectors
+    std::vector<double> sectorCots_;
 
     // HT
 
