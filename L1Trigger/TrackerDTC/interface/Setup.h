@@ -79,6 +79,8 @@ namespace trackerDTC {
     GlobalPoint stubPos(bool hybrid, const TTDTC::Frame& frame, int tfpRegion, int tfpChannel) const;
     // returns global TTStub position
     GlobalPoint stubPos(const TTStubRef& ttStubRef) const;
+    // empty trackerDTC EDProduct
+    TTDTC ttDTC() const { return TTDTC(numRegions_, numOverlappingRegions_, numDTCsPerRegion_); }
 
     // Common track finding parameter
 

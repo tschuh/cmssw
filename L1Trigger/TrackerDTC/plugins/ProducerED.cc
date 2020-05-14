@@ -81,8 +81,8 @@ namespace trackerDTC {
 
   void ProducerED::produce(Event& iEvent, const EventSetup& iSetup) {
     // empty DTC products
-    TTDTC productAccepted(setup_);
-    TTDTC productLost(setup_);
+    TTDTC productAccepted = setup_.ttDTC();
+    TTDTC productLost = setup_.ttDTC();
     if (setup_.configurationSupported()) {
       // read in stub collection
       Handle<TTStubDetSetVec> handle;
