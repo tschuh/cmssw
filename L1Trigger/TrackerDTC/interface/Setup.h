@@ -17,8 +17,9 @@
 #include "L1Trigger/TrackTrigger/interface/TTStubAlgorithm_official.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "CondFormats/SiPhase2TrackerObjects/interface/TrackerDetToDTCELinkCablingMap.h"
+#include "SimTracker/Common/interface/TrackingParticleSelector.h"
 
-#include "DataFormats/L1TrackTrigger/interface/TTTypes.h"
+#include "SimTracker/TrackTriggerAssociation/interface/TTTypes.h"
 #include "DataFormats/L1TrackTrigger/interface/TTDTC.h"
 #include "L1Trigger/TrackerDTC/interface/SetupRcd.h"
 #include "L1Trigger/TrackerDTC/interface/SensorModule.h"
@@ -81,6 +82,10 @@ namespace trackerDTC {
     GlobalPoint stubPos(const TTStubRef& ttStubRef) const;
     // empty trackerDTC EDProduct
     TTDTC ttDTC() const { return TTDTC(numRegions_, numOverlappingRegions_, numDTCsPerRegion_); }
+    // checks if stub collection is considered forming a reconstructable track 
+    bool reconstructable(const std::vector<TTStubRef>& ttStubRefs) const;
+    // checks if tracking particle is selected for efficiency measurements
+    bool useForAlgEff(const TrackingParticle& tp) const;
 
     // Common track finding parameter
 
@@ -261,6 +266,8 @@ namespace trackerDTC {
     const std::vector<SensorModule*>& dtcModules(int dtcId) const { return dtcModules_.at(dtcId); }
     // index = encoded layerId, inner value = decoded layerId for given tfp channel [0-47]
     const std::vector<int>& encodingLayerId(int tfpChannel) const;
+    // total number of output channel
+    int dtcNumStreams() const { return dtcNumStreams_; }
 
     // Parameter specifying GeometricProcessor
 
@@ -439,6 +446,8 @@ namespace trackerDTC {
     void checkTKLayoutId(int tkLayoutId) const;
     // range check of tfp identifier
     void checkTFPIdentifier(int tfpRegion, int tfpChannel) const;
+    // configure TPSelector
+    void configureTPSelector();
 
     // MagneticField
     const MagneticField* magneticField_;
@@ -631,6 +640,8 @@ namespace trackerDTC {
     int offsetLayerDisks_;
     // offset between 0 and smallest layer id (barrel layer 1)
     int offsetLayerId_;
+    // total number of output channel
+    int dtcNumStreams_;
 
     // Parameter specifying GeometricProcessor
     edm::ParameterSet pSetGP_;
@@ -741,6 +752,8 @@ namespace trackerDTC {
 
     // true if tracker geometry and magnetic field supported
     bool configurationSupported_;
+    // selector to partly select TPs for efficiency measurements
+    TrackingParticleSelector tpSelector_;
 
     // TTStubAlgorithm
 

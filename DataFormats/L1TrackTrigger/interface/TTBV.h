@@ -55,6 +55,12 @@ public:
   // constructor: bitset
   TTBV(const std::bitset<S>& bs, bool Signed = false) : twos_(Signed), size_(S), bs_(std::bitset<S>(bs)) {}
 
+  // constructor: slice
+  TTBV(const TTBV& ttBV, int begin, int end = 0) : twos_(ttBV.twos_), size_(begin - end), bs_(ttBV.bs_) {
+    bs_ <<= S - begin;
+    bs_ >>= S - begin + end;
+  }
+
   // access: data members
   bool twos() const { return twos_; }
   int size() const { return size_; }
@@ -224,6 +230,9 @@ public:
 
   // conversion: to double for given precision assuming biased (floor) representation
   double val(double base) const { return (this->val() + .5) * base; }
+
+  // conversion: range based to double for given precision assuming biased (floor) representation, reinterpret sign
+  double val(double base, int start, int end = 0, bool Signed = false) const { return (this->val(start, end, Signed) + .5) * base; }
 
   // range based count of '1's or '0's
   int count(int begin, int end, bool b = true) const {

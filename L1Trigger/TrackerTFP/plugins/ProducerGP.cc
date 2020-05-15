@@ -39,7 +39,7 @@ namespace trackerTFP {
     virtual void endJob() {}
 
     // helper classe to store configurations
-    Setup setup_;
+    trackerDTC::Setup setup_;
     // ED input token of DTC stubs
     EDGetTokenT<TTDTC> edGetToken_;
     // ED output token for accepted stubs
@@ -47,7 +47,7 @@ namespace trackerTFP {
     // ED output token for lost stubs
     EDPutTokenT<TTDTC::Streams> edPutTokenLost_;
     // Setup token
-    ESGetToken<Setup, SetupRcd> esGetToken_;
+    ESGetToken<trackerDTC::Setup, trackerDTC::SetupRcd> esGetToken_;
     // configuration
     ParameterSet iConfig_;
   };
@@ -56,13 +56,12 @@ namespace trackerTFP {
     iConfig_(iConfig)
   {
     const string& labelDTC = iConfig.getParameter<string>("trackerDTCProducer");
-    const string& labelGP = iConfig.getParameter<string>("trackerFTPProducerGP");
     const string& branchAccepted = iConfig.getParameter<string>("StubAccepted");
     const string& branchLost = iConfig.getParameter<string>("StubLost");
     // book in- and output ED products
     edGetToken_ = consumes<TTDTC>(InputTag(labelDTC, branchAccepted));
-    edPutTokenAccepted_ = produces<TTDTC::Streams>(InputTag(labelGP, branchAccepted));
-    edPutTokenLost_ = produces<TTDTC::Streams>(InputTag(labelGP, branchLost));
+    edPutTokenAccepted_ = produces<TTDTC::Streams>(branchAccepted);
+    edPutTokenLost_ = produces<TTDTC::Streams>(branchLost);
     // book ES product
     esGetToken_ = esConsumes<trackerDTC::Setup, trackerDTC::SetupRcd, Transition::BeginRun>();
   }
@@ -72,7 +71,7 @@ namespace trackerTFP {
     if (!setup_.configurationSupported())
       return;
     // check process history if desired
-    if (iConfig.getParameter<string>("CheckHistory"))
+    if (iConfig_.getParameter<bool>("CheckHistory"))
       setup_.checkHistory(iRun.processHistory());
   }
 
@@ -82,18 +81,20 @@ namespace trackerTFP {
     TTDTC::Streams accepted(setup_.dtcNumStreams());
     TTDTC::Streams lost(setup_.dtcNumStreams());
     // read in DTC Product and produce TFP product
-    Handle<TTDTC> handleTTDTC;
-    iEvent.getByToken<TTDTC>(getTokenTTDTC_, handleTTDTC);
-    for (int region = 0; region < setup_.numRegions(); region++) {
-      int nStubs(0);
-      for (int dtc = 0; dtc < setup_.numDTCs(); dtc++) {
-        const TTDTC::Stream& stream = handleTTDTC->stream(region, dtc);
-        nStubs += accumulate(stream.begin(), stream.end(), 0, isNonnull);
+    if (setup_.configurationSupported()) {
+      Handle<TTDTC> handle;
+      iEvent.getByToken<TTDTC>(edGetToken_, handle);
+      for (int region = 0; region < setup_.numRegions(); region++) {
+        int nStubs(0);
+        for (int dtc = 0; dtc < setup_.numDTCs(); dtc++) {
+          const TTDTC::Stream& stream = handle->stream(region, dtc);
+          nStubs += accumulate(stream.begin(), stream.end(), 0, isNonnull);
+        }
+        GeometricProcessor gp(iConfig_, setup_, region, nStubs);
+        for (int dtc = 0; dtc < setup_.numDTCs(); dtc++)
+          gp.consume(handle->stream(region,dtc), dtc);
+        gp.produce(accepted, lost);
       }
-      GeometricProcessor gp(iConfig, setup_, region, nStubs);
-      for (int dtc = 0; dtc < settings_.numDTCs(); dtc++)
-        gp.consume(handleTTDTC->stream(region,dtc), dtc);
-      gp.produce(accepted, lost);
     }
     // store products
     iEvent.emplace(edPutTokenAccepted_, move(accepted));

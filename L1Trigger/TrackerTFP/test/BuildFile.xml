@@ -1,4 +1,4 @@
-<library file="*.cc" name="TrackerTFPPlugins">
+<library file="*.cc" name="TrackerTFPTests">
   <use name="L1Trigger/TrackerTFP"/>
   <flags EDM_PLUGIN="1"/>
 </library>

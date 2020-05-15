@@ -213,6 +213,8 @@ namespace trackerDTC {
     encodeLayerId();
     // create sensor modules
     produceSensorModules();
+    // configure TPSelector
+    configureTPSelector();
   }
 
   // checks current configuration vs input sample configuration
@@ -476,6 +478,47 @@ namespace trackerDTC {
     }
   }
 
+  // configure TPSelector
+  void Setup::configureTPSelector() {
+    // configure TrackingParticleSelector
+    const double ptMin = minPt_;
+    constexpr double ptMax = 9.e9;
+    const double etaMax = tpMaxEta_;
+    const double tip = tpMaxVertR_;
+    const double lip = tpMaxVertZ_;
+    constexpr int minHit = 0;
+    constexpr bool signalOnly = true;
+    constexpr bool intimeOnly = true;
+    constexpr bool chargedOnly = true;
+    constexpr bool stableOnly = false;
+    tpSelector_ = TrackingParticleSelector(
+        ptMin, ptMax, -etaMax, etaMax, tip, lip, minHit, signalOnly, intimeOnly, chargedOnly, stableOnly);
+  }
+
+  // checks if stub collection is considered forming a reconstructable track 
+  bool Setup::reconstructable(const vector<TTStubRef>& ttStubRefs) const {
+    auto toLayerId = [this](const TTStubRef& ttStubRef) {
+      const DetId& detId = ttStubRef->getDetId();
+      return detId.subdetId() == StripSubdetector::TOB ? trackerTopology_->layer(detId)
+                                                       : trackerTopology_->tidWheel(detId) + offsetLayerDisks_;
+    };
+    set<int> hitPattern;
+    transform(ttStubRefs.begin(), ttStubRefs.end(), inserter(hitPattern, hitPattern.begin()), toLayerId);
+    return (int)hitPattern.size() < tpMinLayers_;
+  }
+
+  // checks if tracking particle is selected for efficiency measurements
+  bool Setup::useForAlgEff(const TrackingParticle& tp) const {
+    const bool selected = tpSelector_(tp);
+    const double cot = sinh(tp.eta());
+    const double s = sin(tp.phi());
+    const double c = cos(tp.phi());
+    const TrackingParticle::Point& v = tp.vertex();
+    const double z0 = v.z() - (v.x() * c + v.y() * s) * cot;
+    const double d0 = v.x() * s - v.y() * c;
+    return selected && (abs(d0) < tpMaxD0_) && (abs(z0) < tpMaxVertZ_);
+  }
+
   // derive constants
   void Setup::calculateConstants() {
     // emp
@@ -495,8 +538,8 @@ namespace trackerDTC {
     widthChiZ_ = ceil(log2(neededRangeChiZ_ / baseZ_));
     numSectors_ = numSectorsPhi_ * numSectorsEta_;
     gpNumUnusedBits_ = TTBV::S - 1 - widthR_ - widthPhi_ - widthChiZ_ - 2 * htWidthQoverPt_ - widthLayer_;
-    sectorCots_.resvere(numSectorsEta_);
-    for (int eta = 0; eta < numSectorsEta_, eta++)
+    sectorCots_.reserve(numSectorsEta_);
+    for (int eta = 0; eta < numSectorsEta_; eta++)
       sectorCots_.emplace_back((sinh(boundariesEta_.at(eta)) + sinh(boundariesEta_.at(eta + 1))) / 2.);
     // ht
     htWidthQoverPt_ = ceil(log2(htNumBinsQoverPt_));
@@ -564,6 +607,7 @@ namespace trackerDTC {
     dtcWidthM_ = ceil(log2(maxM / dtcBaseM_));
     dtcNumUnusedBits_ = TTBV::S - 1 - widthR_ - widthPhiDTC_ - widthZ_ - 2 * htWidthQoverPt_ - 2 * widthSectorEta_ -
                         numSectorsPhi_ - widthLayer_;
+    dtcNumStreams_ = numDTCs_ * numOverlappingRegions_;
     // mht
     mhtNumCells_ = mhtNumBinsQoverPt_ * mhtNumBinsPhiT_;
     mhtWidthQoverPt_ = ceil(log2(htNumBinsQoverPt_ * mhtNumBinsQoverPt_));

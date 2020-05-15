@@ -29,9 +29,9 @@ namespace trackerTFP {
       // 
       TTBV inSector_;
       // 
-      Stub(const TTDTC::Frame& frame, trackerDTC::Setup* setup_);
+      Stub(const TTDTC::Frame& frame, const trackerDTC::Setup* setup_);
       // 
-      TTDTC::Frame toFrame(int sector, trackerDTC::Setup* setup_);
+      TTDTC::Frame toFrame(int sector, const trackerDTC::Setup* setup_);
     };
     // 
     Stub* pop_front(std::deque<Stub*>& stubs);

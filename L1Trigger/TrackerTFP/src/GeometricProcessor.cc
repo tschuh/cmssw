@@ -11,7 +11,7 @@ using namespace std;
 namespace trackerTFP {
 
   GeometricProcessor::GeometricProcessor(const edm::ParameterSet& iConfig, const trackerDTC::Setup& setup, int region, int nStubs) :
-    enableTruncation_(iConfig.getParameter<string>("EnableTruncation")),
+    enableTruncation_(iConfig.getParameter<bool>("EnableTruncation")),
     setup_(&setup),
     region_(region),
     input_(setup.numDTCs()),
@@ -105,7 +105,7 @@ namespace trackerTFP {
     }
   }
 
-  GeometricProcessor::Stub::Stub(const TTDTC::Frame& frame, trackerDTC::Setup* setup) :
+  GeometricProcessor::Stub::Stub(const TTDTC::Frame& frame, const trackerDTC::Setup* setup) :
     ttStubRef_(frame.first),
     ttBV_(frame.second),
     inSector_(0, setup->numSectors())
@@ -122,7 +122,7 @@ namespace trackerTFP {
         inSector_[eta * setup->numSectorsPhi() + phi] = phis[phi];
   }
 
-  TTDTC::Frame GeometricProcessor::Stub::toFrame(int sector, trackerDTC::Setup* setup) {
+  TTDTC::Frame GeometricProcessor::Stub::toFrame(int sector, const trackerDTC::Setup* setup) {
     const int sectorPhi = sector % setup->numSectorsPhi();
     const int sectorEta = sector / setup->numSectorsPhi();
     const TTBV hwGap(0, setup->gpNumUnusedBits());
@@ -130,7 +130,7 @@ namespace trackerTFP {
     // parse DTC stub
     TTBV ttBV(ttBV_);
     const TTBV hwLayer(ttBV, setup->widthLayer());
-    ttBV >>= 2 * setup->widthEta() + setup->numSectorsPhi() + setup->widthLayer();
+    ttBV >>= 2 * setup->widthSectorEta() + setup->numSectorsPhi() + setup->widthLayer();
     const TTBV hwQoverPtMinMax(ttBV, 2 * setup->htWidthQoverPt());
     ttBV >>= 2 * setup->htWidthQoverPt();
     double z = ttBV.val(setup->baseZ(), setup->widthZ(), 0, true);
