@@ -175,12 +175,14 @@ namespace trackerTFP {
   }
 
   StubMHT::StubMHT(const StubHT& stub, int phiT, int qOverPt) :
-    Stub(stub, stub.r(), stub.phi(), stub.z(), stub.layer(), stub.sectorPhi(), stub.sectorEta(), stub.phiT(), stub.qOverPt())
+    Stub(stub, 0, 0, stub.r(), stub.phi(), stub.z(), stub.layer(), stub.sectorPhi(), stub.sectorEta(), stub.phiT(), stub.qOverPt())
   {
     const Setup* setup = dataFormats_->setup();
-    get<6>(data_) = this->phiT() * setup->mhtNumBinsPhiT() + phiT;
-    get<7>(data_) = this->qOverPt() * setup->mhtNumBinsQoverPt() + qOverPt;
-    get<1>(data_) += base(Variable::qOverPt) * (qOverPt - .5) * r() - base(Variable::phiT) * (phiT - .5);
+    get<8>(data_) = this->phiT() * setup->mhtNumBinsPhiT() + phiT;
+    get<9>(data_) = this->qOverPt() * setup->mhtNumBinsQoverPt() + qOverPt;
+    get<3>(data_) += base(Variable::qOverPt) * (qOverPt - .5) * r() - base(Variable::phiT) * (phiT - .5);
+    get<0>(data_) = setup->barrel(stub.ttStubRef());
+    get<1>(data_) = setup->psModule(stub.ttStubRef());
     dataFormats_->convert(data_, frame_.second, p_);
     fillTrackId();
   }
@@ -188,16 +190,6 @@ namespace trackerTFP {
   void StubMHT::fillTrackId() {
     TTBV ttBV(bv());
     trackId_ = ttBV.extract(width(Variable::sectorPhi) + width(Variable::sectorEta) + width(Variable::phiT) + width(Variable::qOverPt));
-  }
-
-  bool StubMHT::barrel() const {
-    const Setup* setup = dataFormats_->setup();
-    return setup->barrel(ttStubRef());
-  }
-
-  bool StubMHT::psModule() const {
-    const Setup* setup = dataFormats_->setup();
-    return setup->psModule(ttStubRef());
   }
 
   StubLR::StubLR(const TTDTC::Frame& frame, const DataFormats* formats) :
@@ -361,6 +353,16 @@ namespace trackerTFP {
     const Format<Variable::zT, Process::lr> zT(setup);
     range_ = (zT.range() + 2. * setup->beamWindowZ()) / setup->chosenRofZ();
     width_ = ceil(log2(range_ / base_));
+  }
+
+  template<>
+  Format<Variable::barrel, Process::mht>::Format(const Setup* setup) : DataFormat(false) {
+    width_ = 1;
+  }
+
+  template<>
+  Format<Variable::psModule, Process::mht>::Format(const Setup* setup) : DataFormat(false) {
+    width_ = 1;
   }
 
 } // namespace trackerTFP
