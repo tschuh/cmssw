@@ -2,52 +2,43 @@
 #define L1Trigger_TrackerTFP_GeometricProcessor_h
 
 #include "L1Trigger/TrackerDTC/interface/Setup.h"
+#include "L1Trigger/TrackerTFP/interface/DataFormats.h"
 
 #include <vector>
 #include <deque>
 
 namespace trackerTFP {
 
-  // Class to route Stubs to one stream per sector
+  // Class to route Stubs of one region to one stream per sector
   class GeometricProcessor {
   public:
-    GeometricProcessor(const edm::ParameterSet& iConfig, const trackerDTC::Setup& setup_, int region, int nStubs);
+    GeometricProcessor(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup_, const DataFormats* dataFormats, int region);
     ~GeometricProcessor(){}
 
-    // 
-    void consume(const TTDTC::Stream& stream, int channel);
-    // 
+    // read in and organize input product
+    void consume(const TTDTC& ttDTC);
+    // fill output products
     void produce(TTDTC::Streams& accepted, TTDTC::Streams& lost);
 
   private:
-    // 
-    struct Stub {
-      // 
-      TTStubRef ttStubRef_;
-      // 
-      TTBV ttBV_;
-      // 
-      TTBV inSector_;
-      // 
-      Stub(const TTDTC::Frame& frame, const trackerDTC::Setup* setup_);
-      // 
-      TTDTC::Frame toFrame(int sector, const trackerDTC::Setup* setup_);
-    };
-    // 
-    Stub* pop_front(std::deque<Stub*>& stubs);
+    // remove and return first element of deque, returns nullptr if empty
+    template<class T>
+    T* pop_front(std::deque<T*>& ts) const;
 
     //
     bool enableTruncation_;
     // 
     const trackerDTC::Setup* setup_;
+    //
+    const DataFormats* dataFormats_;
     // 
     const int region_;
     // 
-    std::vector<Stub> stubs_;
+    std::vector<StubPP> stubsPP_;
     // 
-    std::vector<std::vector<Stub*>> input_;
+    std::vector<StubGP> stubsGP_;
     // 
-    std::vector<std::deque<Stub*>> lost_;
+    std::vector<std::vector<std::deque<StubPP*>>> input_;
   };
 
 }

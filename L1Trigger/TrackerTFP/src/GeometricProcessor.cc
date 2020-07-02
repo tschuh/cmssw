@@ -7,156 +7,122 @@
 #include <vector>
 
 using namespace std;
+using namespace edm;
+using namespace trackerDTC;
 
 namespace trackerTFP {
 
-  GeometricProcessor::GeometricProcessor(const edm::ParameterSet& iConfig, const trackerDTC::Setup& setup, int region, int nStubs) :
+  GeometricProcessor::GeometricProcessor(const ParameterSet& iConfig, const Setup* setup, const DataFormats* dataFormats, int region) :
     enableTruncation_(iConfig.getParameter<bool>("EnableTruncation")),
-    setup_(&setup),
+    setup_(setup),
+    dataFormats_(dataFormats),
     region_(region),
-    input_(setup.numDTCs()),
-    lost_(setup.numSectors())
-  {
-    stubs_.reserve(nStubs);
-  }
+    input_(dataFormats_->numChannel(Process::gp), vector<deque<StubPP*>>(dataFormats_->numChannel(Process::pp))) {}
 
-  void GeometricProcessor::consume(const TTDTC::Stream& stream, int channel) {
-    // organize stubs
-    vector<Stub*>& input = input_[channel];
-    input.reserve(stream.size());
-    for (const TTDTC::Frame& frame : stream) {
-      Stub* stub = nullptr;
-      if (frame.first.isNonnull()) {
-        stubs_.emplace_back(frame, setup_);
-        stub = &stubs_.back();
-      }
-      input.push_back(stub);
+  void GeometricProcessor::consume(const TTDTC& ttDTC) {
+    auto validFrame = [](int& sum, const TTDTC::Frame& frame){ return sum += frame.first.isNonnull() ? 1 : 0; };
+    int nStubsPP(0);
+    for (int channel = 0; channel < dataFormats_->numChannel(Process::pp); channel++) {
+      const TTDTC::Stream& stream = ttDTC.stream(region_, channel);
+      nStubsPP += accumulate(stream.begin(), stream.end(), 0, validFrame);
     }
-    // truncate if desired
-    if (!enableTruncation_ || (int)input.size() <= setup_->numFramesIO())
-      return;
-    const auto limit = next(input.begin(), setup_->numFramesIO());
-    input.erase(remove(limit, input.end(), nullptr), input.end());
-    for (auto it = limit; it != input.end(); it++)
-      for (int sector = 0; sector < setup_->numSectors(); sector++)
-        if ((*it)->inSector_[sector])
-          lost_[sector].push_back(*it);
-    input.erase(limit, input.end());
-    for (auto it = input.end(); it != input.begin();)
-      it = (*--it) ? input.begin() : input.erase(it);
+    stubsPP_.reserve(nStubsPP);
+    for (int channel = 0; channel < dataFormats_->numChannel(Process::pp); channel++) {
+      for (const TTDTC::Frame& frame : ttDTC.stream(region_, channel)) {
+        StubPP* stub = nullptr;
+        if (frame.first.isNonnull()) {
+          stubsPP_.emplace_back(frame, dataFormats_);
+          stub = &stubsPP_.back();
+        }
+        for (int sector = 0; sector < dataFormats_->numChannel(Process::gp); sector++)
+          input_[sector][channel].push_back(stub && stub->inSector(sector) ? stub : nullptr);
+      }
+    }
+    // remove all gaps between end and last stub
+    for(vector<deque<StubPP*>>& input : input_)
+      for(deque<StubPP*>& stubs : input)
+        for(auto it = stubs.end(); it != stubs.begin();)
+          it = (*--it) ? stubs.begin() : stubs.erase(it);
+    auto validStub = [](int& sum, StubPP* stub){ return sum += stub ? 1 : 0; };
+    int nStubsGP(0);
+    for (const vector<deque<StubPP*>>& sector : input_)
+      for (const deque<StubPP*>& channel : sector)
+        nStubsGP += accumulate(channel.begin(), channel.end(), 0, validStub);
+    stubsGP_.reserve(nStubsGP);
   }
 
-  void GeometricProcessor::produce(TTDTC::Streams& streamAccepted, TTDTC::Streams& streamLost) {
-    for (int sector = 0; sector < setup_->numSectors(); sector++) {
-      auto sectorMask = [sector](Stub* stub){ return stub && stub->inSector_[sector] ? stub : nullptr; };
-      deque<Stub*> accepted;
-      deque<Stub*> lost(lost_[sector]);
-      // prepare input stubs
-      vector<deque<Stub*>> stacks(setup_->numDTCs());
-      vector<deque<Stub*>> inputs(setup_->numDTCs());
-      for (int dtc = 0; dtc < setup_->numDTCs(); dtc++) {
-        const vector<Stub*>& stubs = input_[dtc];
-        transform(stubs.begin(), stubs.end(), back_inserter(inputs[dtc]), sectorMask);
-      }
+  void GeometricProcessor::produce(TTDTC::Streams& accepted, TTDTC::Streams& lost) {
+    for (int sector = 0; sector < dataFormats_->numChannel(Process::gp); sector++) {
+      vector<deque<StubPP*>>& inputs = input_[sector];
+      vector<deque<StubGP*>> stacks(dataFormats_->numChannel(Process::pp));
+      const int sectorPhi = sector % setup_->numSectorsPhi();
+      const int sectorEta = sector / setup_->numSectorsPhi();
+      auto size =  [](int& sum, const deque<StubPP*>& stubs){ return sum += stubs.size(); };
+      const int nStubs = accumulate(inputs.begin(), inputs.end(), 0, size);
+      vector<StubGP*> acceptedSector;
+      vector<StubGP*> lostSector;
+      acceptedSector.reserve(nStubs);
+      lostSector.reserve(nStubs);
       // clock accurate firmware emulation, each while trip describes one clock tick, one stub in and one stub out per tick
-      while(!all_of(inputs.begin(), inputs.end(), [](const deque<Stub*>& stubs){ return stubs.empty(); }) or
-            !all_of(stacks.begin(), stacks.end(), [](const deque<Stub*>& stubs){ return stubs.empty(); })) {
+      while(!all_of(inputs.begin(), inputs.end(), [](const deque<StubPP*>& stubs){ return stubs.empty(); }) or
+            !all_of(stacks.begin(), stacks.end(), [](const deque<StubGP*>& stubs){ return stubs.empty(); })) {
         // fill input fifo
-        for (int dtc = 0; dtc < setup_->numDTCs(); dtc++) {
-          deque<Stub*>& stack = stacks[dtc];
-          Stub* stub = pop_front(inputs[dtc]);
+        for (int channel = 0; channel < dataFormats_->numChannel(Process::pp); channel++) {
+          deque<StubGP*>& stack = stacks[channel];
+          StubPP* stub = pop_front(inputs[channel]);
           if (stub) {
+            stubsGP_.emplace_back(*stub, sectorPhi, sectorEta);
             if (enableTruncation_ && (int)stack.size() == setup_->gpDepthMemory() - 1)
-              lost.push_back(pop_front(stack));
-            stack.push_back(stub);
+              lostSector.push_back(pop_front(stack));
+            stack.push_back(&stubsGP_.back());
           }
         }
         // merge input fifos to one stream
         bool nothingToRoute(true);
-        for (int dtc = setup_->numDTCs() - 1; dtc >= 0; dtc--) {
-          Stub* stub = pop_front(stacks[dtc]);
+        for (int channel = dataFormats_->numChannel(Process::pp) - 1; channel >= 0; channel--) {
+          StubGP* stub = pop_front(stacks[channel]);
           if (stub) {
             nothingToRoute = false;
-            accepted.push_back(stub);
+            acceptedSector.push_back(stub);
             break;
           }
         }
         if (nothingToRoute)
-          accepted.push_back(nullptr);
+          acceptedSector.push_back(nullptr);
       }
       // truncate if desired
-      if (enableTruncation_ && (int)accepted.size() > setup_->numFrames()) {
-        const auto limit = next(accepted.begin(), setup_->numFrames());
-        copy_if(limit, accepted.end(), back_inserter(lost), [](const Stub* stub){ return stub; });
-        accepted.erase(limit, accepted.end());
+      if (enableTruncation_ && (int)acceptedSector.size() > setup_->numFrames()) {
+        const auto limit = next(acceptedSector.begin(), setup_->numFrames());
+        copy_if(limit, acceptedSector.end(), back_inserter(lostSector), [](const StubGP* stub){ return stub; });
+        acceptedSector.erase(limit, acceptedSector.end());
       }
       // remove all gaps between end and last stub
-      for(auto it = accepted.end(); it != accepted.begin();)
-        it = (*--it) ? accepted.begin() : accepted.erase(it);
+      for(auto it = acceptedSector.end(); it != acceptedSector.begin();)
+        it = (*--it) ? acceptedSector.begin() : acceptedSector.erase(it);
       // fill products
-      auto put = [this, sector](const deque<Stub*> stubs, TTDTC::Stream& stream) {
-        auto toFrame = [this, sector](Stub* stub){ return stub ? stub->toFrame(sector, setup_) : TTDTC::Frame(); };
+      auto put = [](const vector<StubGP*>& stubs, TTDTC::Stream& stream) {
+        //auto toFrame = [](StubGP* stub){ return stub ? stub->frame() : TTDTC::Frame(); };
         stream.reserve(stubs.size());
-        transform(stubs.begin(), stubs.end(), back_inserter(stream), toFrame);
+        for (StubGP* stub : stubs)
+          if (stub)
+            stream.emplace_back(stub->frame());
+        //transform(stubs.begin(), stubs.end(), back_inserter(stream), toFrame);
       };
-      const int index = region_ * setup_->numSectors() + sector;
-      put(accepted, streamAccepted[index]);
-      put(lost, streamLost[index]);
+      const int index = region_ * dataFormats_->numChannel(Process::gp) + sector;
+      put(acceptedSector, accepted[index]);
+      put(lostSector, lost[index]);
     }
   }
 
-  GeometricProcessor::Stub::Stub(const TTDTC::Frame& frame, const trackerDTC::Setup* setup) :
-    ttStubRef_(frame.first),
-    ttBV_(frame.second),
-    inSector_(0, setup->numSectors())
-  {
-    TTBV ttBV(ttBV_);
-    ttBV >>= setup->widthLayer();
-    const TTBV phis(ttBV.val(setup->numSectorsPhi(), setup->numSectorsPhi()));
-    ttBV >>= setup->numSectorsPhi();
-    const int etaMax = ttBV.val(setup->widthSectorEta());
-    ttBV >>= setup->widthSectorEta();
-    const int etaMin = ttBV.val(setup->widthSectorEta());
-    for (int eta = etaMin; eta <= etaMax; eta++)
-      for (int phi = 0; phi < setup->numSectorsPhi(); phi++)
-        inSector_[eta * setup->numSectorsPhi() + phi] = phis[phi];
-  }
-
-  TTDTC::Frame GeometricProcessor::Stub::toFrame(int sector, const trackerDTC::Setup* setup) {
-    const int sectorPhi = sector % setup->numSectorsPhi();
-    const int sectorEta = sector / setup->numSectorsPhi();
-    const TTBV hwGap(0, setup->gpNumUnusedBits());
-    const TTBV hwValid(1, 1);
-    // parse DTC stub
-    TTBV ttBV(ttBV_);
-    const TTBV hwLayer(ttBV, setup->widthLayer());
-    ttBV >>= 2 * setup->widthSectorEta() + setup->numSectorsPhi() + setup->widthLayer();
-    const TTBV hwQoverPtMinMax(ttBV, 2 * setup->htWidthQoverPt());
-    ttBV >>= 2 * setup->htWidthQoverPt();
-    double z = ttBV.val(setup->baseZ(), setup->widthZ(), 0, true);
-    ttBV >>= setup->widthZ();
-    double phi = ttBV.val(setup->basePhi(), setup->widthPhiDTC(), 0, true);
-    ttBV >>= setup->widthPhiDTC();
-    double r = ttBV.val(setup->baseR(), setup->widthR(), 0, true);
-    const TTBV hwR(ttBV, setup->widthR());
-    // transform phi and z
-    r += setup->chosenRofPhi();
-    phi += (sectorPhi - .5) * setup->baseSector();
-    z -= r * setup->sectorCot(sectorEta);
-    const TTBV hwPhi(phi, setup->basePhi(), setup->widthPhi(), true);
-    const TTBV hwZ(z, setup->baseZ(), setup->widthChiZ(), true);
-    // assemble final bitset
-    const TTDTC::BV bv(hwGap.str() + hwValid.str() + hwR.str() + hwPhi.str() + hwZ.str() + hwQoverPtMinMax.str() + hwLayer.str());
-    return make_pair(ttStubRef_, bv);
-  }
-
-  GeometricProcessor::Stub* GeometricProcessor::pop_front(deque<GeometricProcessor::Stub*>& stubs) {
-    Stub* stub = nullptr;
-    if (!stubs.empty()) {
-      stub = stubs.front();
-      stubs.pop_front();
+  // remove and return first element of deque, returns nullptr if empty
+  template<class T>
+  T* GeometricProcessor::pop_front(deque<T*>& ts) const {
+    T* t = nullptr;
+    if (!ts.empty()) {
+      t = ts.front();
+      ts.pop_front();
     }
-    return stub;
+    return t;
   }
 
 }

@@ -116,10 +116,14 @@ namespace trackerDTC {
     Setup setup_;
     // selector to partly select TPs for efficiency measurements
     TrackingParticleSelector tpSelector_;
+    //
+    TrackingParticleSelector tpSelectorLoose_;
     // enables analyze of TPs
     bool useMCTruth_;
     // specifies used TT algorithm
     bool hybrid_;
+    //
+    int nEvents_;
 
     // Histograms
 
@@ -141,7 +145,7 @@ namespace trackerDTC {
   };
 
   Analyzer::Analyzer(const ParameterSet& iConfig)
-      : useMCTruth_(iConfig.getParameter<bool>("UseMCTruth")), hybrid_(iConfig.getParameter<bool>("UseHybrid")) {
+      : useMCTruth_(iConfig.getParameter<bool>("UseMCTruth")), hybrid_(iConfig.getParameter<bool>("UseHybrid")), nEvents_(0) {
     usesResource("TFileService");
     // book in- and output ED products
     const auto& inputTagAccepted = iConfig.getParameter<InputTag>("InputTagAccepted");
@@ -194,6 +198,7 @@ namespace trackerDTC {
     analyzeStubs(handleTTDTCAccepted.product(), handleTTDTCLost.product(), mapAllStubsTPs, mapTPsTTStubs);
     // analyze survived TPs
     analyzeTPs(mapTPsTTStubs);
+    nEvents_++;
   }
 
   void Analyzer::endJob() {
@@ -214,7 +219,7 @@ namespace trackerDTC {
     endJobMC();
     // printout DTC summary
     endJobDTC();
-    log_ << "=============================================================" << endl;
+    log_ << "=============================================================";
     LogPrint("L1Trigger/TrackerDTC") << log_.str();
   }
 
@@ -251,10 +256,10 @@ namespace trackerDTC {
     int nTPsReco(0);
     int nTPsEff(0);
     for (const auto& mapTPStubs : mapTPsStubs) {
-      if (!reconstructable(mapTPStubs.second))
+      if (!tpSelectorLoose_(*mapTPStubs.first) || !reconstructable(mapTPStubs.second))
         continue;
       nTPsReco++;
-      const bool useForAlgEff = select(*mapTPStubs.first.get());
+      const bool useForAlgEff = select(*mapTPStubs.first);
       if (useForAlgEff) {
         nTPsEff++;
         fill(mapTPStubs.first, hisEffMC_);
@@ -262,8 +267,9 @@ namespace trackerDTC {
           mapStubsTPs[ttStubRef].insert(mapTPStubs.first);
       }
     }
-    profMC_->Fill(3, nTPsReco);
-    profMC_->Fill(4, nTPsEff);
+    profMC_->Fill(3, nTPsReco / (double)setup_.numRegions());
+    profMC_->Fill(4, nTPsEff / (double)setup_.numRegions());
+    profMC_->Fill(5, nTPsEff);
   }
 
   // checks if a stub selection is considered reconstructable
@@ -418,9 +424,9 @@ namespace trackerDTC {
     const double numTPs = profDTC_->GetBinContent(3);
     const double errStubs = profDTC_->GetBinError(1);
     const double errStubsLost = profDTC_->GetBinError(2);
-    const double totalTPs = profMC_->GetBinContent(4);
+    const double totalTPs = profMC_->GetBinContent(5);
     const double eff = numTPs / totalTPs;
-    const double errEff = sqrt(eff * (1. - eff) / totalTPs);
+    const double errEff = sqrt(eff * (1. - eff) / totalTPs / nEvents_);
     const vector<double> nums = {numStubs, numStubsLost};
     const vector<double> errs = {errStubs, errStubsLost};
     const int wNums = ceil(log10(*max_element(nums.begin(), nums.end()))) + 5;
@@ -447,6 +453,7 @@ namespace trackerDTC {
     constexpr bool stableOnly = false;
     tpSelector_ = TrackingParticleSelector(
         ptMin, ptMax, -etaMax, etaMax, tip, lip, minHit, signalOnly, intimeOnly, chargedOnly, stableOnly);
+    tpSelectorLoose_ = TrackingParticleSelector(ptMin, ptMax, -etaMax, etaMax, tip, lip, minHit, false, false, false, stableOnly);
   }
 
   // book histograms
@@ -455,11 +462,12 @@ namespace trackerDTC {
     TFileDirectory dir;
     // mc
     dir = fs->mkdir("MC");
-    profMC_ = dir.make<TProfile>("Counts", ";", 4, 0.5, 4.5);
+    profMC_ = dir.make<TProfile>("Counts", ";", 5, 0.5, 5.5);
     profMC_->GetXaxis()->SetBinLabel(1, "Stubs");
     profMC_->GetXaxis()->SetBinLabel(2, "Matched Stubs");
     profMC_->GetXaxis()->SetBinLabel(3, "reco TPs");
     profMC_->GetXaxis()->SetBinLabel(4, "eff TPs");
+    profMC_->GetXaxis()->SetBinLabel(5, "total eff TPs");
     constexpr array<int, NumEfficiency> binsEff{{9 * 8, 10, 16, 10, 30, 24}};
     constexpr array<pair<double, double>, NumEfficiency> rangesEff{
         {{-M_PI, M_PI}, {0., 100.}, {-1. / 3., 1. / 3.}, {-5., 5.}, {-15., 15.}, {-2.4, 2.4}}};

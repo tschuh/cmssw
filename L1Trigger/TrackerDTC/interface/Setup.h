@@ -25,6 +25,7 @@
 #include "L1Trigger/TrackerDTC/interface/SensorModule.h"
 
 #include <vector>
+#include <set>
 #include <unordered_map>
 
 namespace trackerDTC {
@@ -86,6 +87,14 @@ namespace trackerDTC {
     bool reconstructable(const std::vector<TTStubRef>& ttStubRefs) const;
     // checks if tracking particle is selected for efficiency measurements
     bool useForAlgEff(const TrackingParticle& tp) const;
+    //
+    bool useForReconstructable(const TrackingParticle& tp) const { return tpSelectorLoose_(tp); }
+    //
+    int layerId(const TTStubRef& ttStubRef) const;
+    //
+    int barrel(const TTStubRef& ttStubRef) const;
+    //
+    int psModule(const TTStubRef& ttStubRef) const;
 
     // Common track finding parameter
 
@@ -93,6 +102,8 @@ namespace trackerDTC {
     double beamWindowZ() const { return beamWindowZ_; }
     // number of frames betwen 2 resets of 18 BX packets
     int numFrames() const { return numFrames_; }
+    // number of frames needed per reset
+    int numFramesInfra() const { return numFramesInfra_; }
     // number of valid frames per 18 BX packet
     int numFramesIO() const { return numFramesIO_; }
     // number of valid frames per 8 BX packet
@@ -131,7 +142,7 @@ namespace trackerDTC {
     // number of bits used for stub z
     int widthZ() const { return widthZ_; }
     // number of bits used for stub layer id
-    int widthLayer() const { return widthLayer_; }
+    int widthLayerId() const { return widthLayerId_; }
     // internal stub r precision in cm
     double baseR() const { return baseR_; }
     // internal stub z precision in cm
@@ -140,6 +151,14 @@ namespace trackerDTC {
     double basePhi() const { return basePhi_; }
     // number of padded 0s in output data format
     int dtcNumUnusedBits() const { return dtcNumUnusedBits_; }
+    // outer radius of outer tracker in cm
+    double outerRadius() const { return outerRadius_; }
+    // inner radius of outer tracker in cm
+    double innerRadius() const { return innerRadius_; }
+    // range of stub z residual w.r.t. sector center which needs to be covered
+    double neededRangeChiZ() const { return neededRangeChiZ_; }
+    // half length of outer tracker in cm
+    double halfLength() const { return halfLength_; }
 
     // Hybrid specific parameter
 
@@ -162,7 +181,7 @@ namespace trackerDTC {
     // number of bits used for stub bend number for module types (barrelPS, barrel2S, diskPS, disk2S)
     int hybridWidthBend(SensorModule::Type type) const { return hybridWidthsBend_.at(type); }
     // number of bits used for stub layer id
-    int hybridWidthLayer() const { return hybridWidthLayer_; }
+    int hybridWidthLayerId() const { return hybridWidthLayerId_; }
     // precision or r in cm for (barrelPS, barrel2S, diskPS, disk2S)
     double hybridBaseR(SensorModule::Type type) const { return hybridBasesR_.at(type); }
     // precision or phi in rad for (barrelPS, barrel2S, diskPS, disk2S)
@@ -297,6 +316,8 @@ namespace trackerDTC {
     int gpNumUnusedBits() const { return gpNumUnusedBits_; }
     // cot(theta) of given eta sector
     double sectorCot(int eta) const { return sectorCots_.at(eta); }
+    // total number of gp output channel
+    int gpNumStreams() const { return gpNumStreams_; }
 
     // Parameter specifying HoughTransform
 
@@ -318,6 +339,12 @@ namespace trackerDTC {
     double htBaseQoverPt() const { return htBaseQoverPt_; }
     // phiT bin width in rad
     double htBasePhiT() const { return htBasePhiT_; }
+    // number of unused bits in HT output format
+    int htNumUnusedBits() const { return htNumUnusedBits_; }
+    // number of bits used for internal stub sector
+    int widthSector() const { return widthSector_; }
+    // total number of ht output channel
+    int htNumStreams() const { return htNumStreams_; }
 
     // Parameter specifying MiniHoughTransform
 
@@ -326,7 +353,11 @@ namespace trackerDTC {
     // number of finer phiT bins inside HT bin
     int mhtNumBinsPhiT() const { return mhtNumBinsPhiT_; }
     // number of dynamic load balancing steps
-    int mhtNumDLB() const { return mhtNumDLB_; }
+    int mhtNumDLBs() const { return mhtNumDLBs_; }
+    // number of units per dynamic load balancing step
+    int mhtNumDLBNodes() const { return mhtNumDLBNodes_; }
+    // number of inputs per dynamic load balancing unit
+    int mhtNumDLBChannel() const { return mhtNumDLBChannel_; }
     // required number of stub layers to form a candidate
     int mhtMinLayers() const { return mhtMinLayers_; }
     // number of mht cells
@@ -417,6 +448,19 @@ namespace trackerDTC {
     double drBasePhi0() const { return drBasePhi0_; }
     double drBaseCot() const { return drBaseCot_; }
     double drBaseZ0() const { return drBaseZ0_; }
+
+    // LR
+
+    int lrBaseDiffPhiT() const { return lrBaseDiffPhiT_; }
+    int lrBaseDiffQoverPt() const { return lrBaseDiffQoverPt_; }
+    int lrBaseDiffZT() const { return lrBaseDiffZT_; }
+    int lrBaseDiffCot() const { return lrBaseDiffCot_; }
+    int lrNumIterations() const { return lrNumIterations_; }
+    int lrMinLayers() const { return lrMinLayers_; }
+    int lrMinLayersPS() const { return lrMinLayersPS_; }
+    double lrResidPhi() const { return lrResidPhi_; }
+    double lrResidZ2S() const { return lrResidZ2S_; }
+    double lrResidZPS() const { return lrResidZPS_; }
 
   private:
     // checks consitency between history and current configuration for a specific module
@@ -657,6 +701,8 @@ namespace trackerDTC {
     int gpDepthMemory_;
     // defining r-z sector shape
     std::vector<double> boundariesEta_;
+    // total number of gp output channel
+    int gpNumStreams_;
 
     // Parameter specifying HoughTransform
     edm::ParameterSet pSetHT_;
@@ -668,6 +714,8 @@ namespace trackerDTC {
     int htMinLayers_;
     // internal fifo depth
     int htDepthMemory_;
+    // total number of ht output channel
+    int htNumStreams_;
 
     // Parameter specifying MiniHoughTransform
     edm::ParameterSet pSetMHT_;
@@ -676,7 +724,11 @@ namespace trackerDTC {
     // number of finer phiT bins inside HT bin
     int mhtNumBinsPhiT_;
     // number of dynamic load balancing steps
-    int mhtNumDLB_;
+    int mhtNumDLBs_;
+    // number of units per dynamic load balancing step
+    int mhtNumDLBNodes_;
+    // number of inputs per dynamic load balancing unit
+    int mhtNumDLBChannel_;
     // required number of stub layers to form a candidate
     int mhtMinLayers_;
 
@@ -746,6 +798,20 @@ namespace trackerDTC {
     // number of bist used for z0
     int drWidthZ0_;
 
+    // LR
+
+    edm::ParameterSet pSetLR_;
+    int lrBaseDiffPhiT_;
+    int lrBaseDiffQoverPt_;
+    int lrBaseDiffZT_;
+    int lrBaseDiffCot_;
+    int lrNumIterations_;
+    int lrMinLayers_;
+    int lrMinLayersPS_;
+    double lrResidPhi_;
+    double lrResidZ2S_;
+    double lrResidZPS_;
+
     //
     // Derived constants
     //
@@ -754,6 +820,8 @@ namespace trackerDTC {
     bool configurationSupported_;
     // selector to partly select TPs for efficiency measurements
     TrackingParticleSelector tpSelector_;
+    // 
+    TrackingParticleSelector tpSelectorLoose_;
 
     // TTStubAlgorithm
 
@@ -784,7 +852,7 @@ namespace trackerDTC {
     // TMTT
 
     // number of bits used for stub layer id
-    int widthLayer_;
+    int widthLayerId_;
     // internal stub r precision in cm
     double baseR_;
     // internal stub z precision in cm
@@ -797,7 +865,7 @@ namespace trackerDTC {
     // hybrid
 
     // number of bits used for stub layer id
-    int hybridWidthLayer_;
+    int hybridWidthLayerId_;
     // precision or r in cm for (barrelPS, barrel2S, diskPS, disk2S)
     std::vector<double> hybridBasesR_;
     // precision or phi in rad for (barrelPS, barrel2S, diskPS, disk2S)
@@ -883,6 +951,10 @@ namespace trackerDTC {
     double htBaseQoverPt_;
     // phiT bin width precision in rad
     double htBasePhiT_;
+    // number of unused bits in HT output format
+    int htNumUnusedBits_;
+    // number of bits used for internal stub sector
+    int widthSector_;
 
     // MHT
 

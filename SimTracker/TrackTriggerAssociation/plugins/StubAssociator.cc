@@ -23,6 +23,7 @@
 
 using namespace std;
 using namespace edm;
+using namespace trackerDTC;
 
 namespace tt {
 
@@ -42,7 +43,7 @@ namespace tt {
     void endJob() {}
 
     // helper classe to store configurations
-    trackerDTC::Setup setup_;
+    const trackerDTC::Setup* setup_;
     // ED input token of TTStubs
     EDGetTokenT<TTStubDetSetVec> getTokenTTStubDetSetVec_;
     // ED input token of TTClusterAssociation
@@ -66,7 +67,7 @@ namespace tt {
   }
 
   void StubAssociator::beginRun(const Run& iRun, const EventSetup& iSetup) {
-    setup_ = iSetup.getData(esGetToken_);
+    setup_ = &iSetup.getData(esGetToken_);
   }
 
   void StubAssociator::produce(Event& iEvent, const EventSetup& iSetup) {
@@ -91,19 +92,19 @@ namespace tt {
       }
     }
     // associate reconstructable TrackingParticles with TTStubs
-    StubAssociation reconstructable;
-    StubAssociation selection;
+    StubAssociation reconstructable(setup_);
+    StubAssociation selection(setup_);
     for (const pair<TPPtr, vector<TTStubRef>>& p : mapTPPtrsTTStubRefs) {
-      if (!setup_.reconstructable(p.second))
+      if (!setup_->useForReconstructable(*p.first) || !setup_->reconstructable(p.second))
         continue;
       reconstructable.insert(p.first, p.second);
-      if (setup_.useForAlgEff(*p.first))
+      if (setup_->useForAlgEff(*p.first))
         selection.insert(p.first, p.second);
     }
     iEvent.emplace(putTokenReconstructable_, move(reconstructable));
     iEvent.emplace(putTokenSelection_, move(selection));
   }
 
-}  // namespace tt
+} // namespace tt
 
 DEFINE_FWK_MODULE(tt::StubAssociator);

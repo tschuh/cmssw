@@ -155,7 +155,7 @@ namespace trackerDTC {
     const TTBV hwZ(z_, setup_->hybridBaseZ(type), setup_->hybridWidthZ(type), true);
     const TTBV hwAlpha(row_, setup_->hybridBaseAlpha(type), setup_->hybridWidthAlpha(type), true);
     const TTBV hwBend(bend_, setup_->hybridWidthBend(type), true);
-    const TTBV hwLayer(sm_->encodedLayerId(), setup_->hybridWidthLayer());
+    const TTBV hwLayer(sm_->encodedLayerId(), setup_->hybridWidthLayerId());
     const TTBV hwGap(0, setup_->hybridNumUnusedBits(type));
     const TTBV hwValid(1, 1);
     // assemble final bitset
@@ -217,7 +217,7 @@ namespace trackerDTC {
     // convert stub variables into bit vectors
     const TTBV hwValid(1, 1);
     const TTBV hwGap(0, setup_->dtcNumUnusedBits());
-    const TTBV hwLayer(layer, setup_->widthLayer());
+    const TTBV hwLayer(layer, setup_->widthLayerId());
     const TTBV hwSectorEtaMin(setcorEta.first, setup_->widthSectorEta());
     const TTBV hwSectorEtaMax(setcorEta.second, setup_->widthSectorEta());
     const TTBV hwR(r_, setup_->baseR(), setup_->widthR(), true);
@@ -228,10 +228,8 @@ namespace trackerDTC {
     TTBV hwSectorPhis(0, setup_->numSectorsPhi());
     for (int sectorPhi = 0; sectorPhi < setup_->numSectorsPhi(); sectorPhi++)
       hwSectorPhis[sectorPhi] = sectorsPhi[region * setup_->numSectorsPhi() + sectorPhi];
-    // assemble final bitsetTTDTC::BV(hwGap.str() + hwValid.str() + hwR.str() + hwPhi.str() + hwZ.str() + hwQoverPtMin.str() +
-    return TTDTC::BV(hwGap.str() + hwValid.str() + hwR.str() + hwPhi.str() + hwZ.str() + hwQoverPtMin.str() +
-                     hwQoverPtMax.str() + hwSectorEtaMin.str() + hwSectorEtaMax.str() + hwSectorPhis.str() +
-                     hwLayer.str());
+    // assemble final bitset
+    return TTDTC::BV(hwGap.str() + hwValid.str() + hwR.str() + hwPhi.str() + hwZ.str() + hwLayer.str() + hwSectorPhis.str() + hwSectorEtaMin.str() + hwSectorEtaMax.str() + hwQoverPtMin.str() + hwQoverPtMax.str());
   }
 
 }  // namespace trackerDTC

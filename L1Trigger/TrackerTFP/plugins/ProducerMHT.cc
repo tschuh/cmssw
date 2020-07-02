@@ -12,10 +12,10 @@
 
 #include "L1Trigger/TrackerDTC/interface/Setup.h"
 #include "L1Trigger/TrackerTFP/interface/DataFormats.h"
-#include "L1Trigger/TrackerTFP/interface/GeometricProcessor.h"
+#include "L1Trigger/TrackerTFP/interface/MiniHoughTransform.h"
 
-#include <numeric>
 #include <string>
+#include <numeric>
 
 using namespace std;
 using namespace edm;
@@ -23,23 +23,23 @@ using namespace trackerDTC;
 
 namespace trackerTFP {
 
-  /*! \class  trackerTFP::ProducerGP
-   *  \brief  L1TrackTrigger Geometric Processor emulator
+  /*! \class  trackerTFP::ProducerMHT
+   *  \brief  L1TrackTrigger Mini Hough Transform emulator
    *  \author Thomas Schuh
-   *  \date   2020, March
+   *  \date   2020, May
    */
-  class ProducerGP : public stream::EDProducer<> {
+  class ProducerMHT : public stream::EDProducer<> {
   public:
-    explicit ProducerGP(const ParameterSet&);
-    ~ProducerGP() override {}
+    explicit ProducerMHT(const ParameterSet&);
+    ~ProducerMHT() override {}
 
   private:
     virtual void beginRun(const Run&, const EventSetup&) override;
     virtual void produce(Event&, const EventSetup&) override;
     virtual void endJob() {}
 
-    // ED input token of DTC stubs
-    EDGetTokenT<TTDTC> edGetToken_;
+    // ED input token of gp stubs
+    EDGetTokenT<TTDTC::Streams> edGetToken_;
     // ED output token for accepted stubs
     EDPutTokenT<TTDTC::Streams> edPutTokenAccepted_;
     // ED output token for lost stubs
@@ -50,20 +50,19 @@ namespace trackerTFP {
     ESGetToken<DataFormats, DataFormatsRcd> esGetTokenDataFormats_;
     // configuration
     ParameterSet iConfig_;
-    // helper classe to store configurations
     const Setup* setup_;
     // helper class to extract structured data from TTDTC::Frames
     const DataFormats* dataFormats_;
   };
 
-  ProducerGP::ProducerGP(const ParameterSet& iConfig) :
+  ProducerMHT::ProducerMHT(const ParameterSet& iConfig) :
     iConfig_(iConfig)
   {
-    const string& label = iConfig.getParameter<string>("LabelDTC");
+    const string& label = iConfig.getParameter<string>("LabelHT");
     const string& branchAccepted = iConfig.getParameter<string>("BranchAccepted");
     const string& branchLost = iConfig.getParameter<string>("BranchLost");
     // book in- and output ED products
-    edGetToken_ = consumes<TTDTC>(InputTag(label, branchAccepted));
+    edGetToken_ = consumes<TTDTC::Streams>(InputTag(label, branchAccepted));
     edPutTokenAccepted_ = produces<TTDTC::Streams>(branchAccepted);
     edPutTokenLost_ = produces<TTDTC::Streams>(branchLost);
     // book ES products
@@ -74,32 +73,34 @@ namespace trackerTFP {
     dataFormats_ = nullptr;
   }
 
-  void ProducerGP::beginRun(const Run& iRun, const EventSetup& iSetup) {
+  void ProducerMHT::beginRun(const Run& iRun, const EventSetup& iSetup) {
+    // helper class to store configurations
     setup_ = &iSetup.getData(esGetTokenSetup_);
     if (!setup_->configurationSupported())
       return;
     // check process history if desired
     if (iConfig_.getParameter<bool>("CheckHistory"))
       setup_->checkHistory(iRun.processHistory());
+    // helper class to extract structured data from TTDTC::Frames
     dataFormats_ = &iSetup.getData(esGetTokenDataFormats_);
   }
 
-  void ProducerGP::produce(Event& iEvent, const EventSetup& iSetup) {
-    // empty GP products
-    TTDTC::Streams accepted(dataFormats_->numStreams(Process::gp));
-    TTDTC::Streams lost(dataFormats_->numStreams(Process::gp));
-    // read in DTC Product and produce TFP product
+  void ProducerMHT::produce(Event& iEvent, const EventSetup& iSetup) {
+    // empty MHT products
+    TTDTC::Streams accepted(dataFormats_->numStreams(Process::mht));
+    TTDTC::Streams lost(dataFormats_->numStreams(Process::mht));
+    // read in HT Product and produce MHT product
     if (setup_->configurationSupported()) {
-      Handle<TTDTC> handle;
-      iEvent.getByToken<TTDTC>(edGetToken_, handle);
-      const TTDTC& ttDTC = *handle.product();
+      Handle<TTDTC::Streams> handle;
+      iEvent.getByToken<TTDTC::Streams>(edGetToken_, handle);
+      const TTDTC::Streams& streams = *handle.product();
       for (int region = 0; region < setup_->numRegions(); region++) {
-        // object to route Stubs of one region to one stream per sector
-        GeometricProcessor gp(iConfig_, setup_, dataFormats_, region);
+        // object to find in a region finer rough candidates in r-phi
+        MiniHoughTransform mht(iConfig_, setup_, dataFormats_, region);
         // read in and organize input product
-        gp.consume(ttDTC);
+        mht.consume(streams);
         // fill output products
-        gp.produce(accepted, lost);
+        mht.produce(accepted, lost);
       }
     }
     // store products
@@ -109,4 +110,4 @@ namespace trackerTFP {
 
 } // namespace trackerTFP
 
-DEFINE_FWK_MODULE(trackerTFP::ProducerGP);
+DEFINE_FWK_MODULE(trackerTFP::ProducerMHT);

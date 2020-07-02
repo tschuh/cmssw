@@ -138,7 +138,9 @@ TrackTrigger_params = cms.PSet (
   MiniHoughTransform = cms.PSet (
     NumBinsQoverPt = cms.int32( 2 ), # number of finer qOverPt bins inside HT bin
     NumBinsPhiT    = cms.int32( 2 ), # number of finer phiT bins inside HT bin
-    NumDLB         = cms.int32( 2 ), # number of dynamic load balancing steps
+    NumDLBs        = cms.int32( 2 ), # number of dynamic load balancing steps
+    NumDLBNodes    = cms.int32( 8 ), # number of units per dynamic load balancing step
+    NumDLBChannel  = cms.int32( 2 ), # number of inputs per dynamic load balancing unit
     MinLayers      = cms.int32( 5 )  # required number of stub layers to form a candidate
   ),
 
@@ -194,6 +196,20 @@ TrackTrigger_params = cms.PSet (
     WidthQoverPt = cms.int32( 15 ), # number of bist used for qOverPt
     WidthCot     = cms.int32( 16 ), # number of bist used for cot(theta)
     WidthZ0      = cms.int32( 12 )  # number of bist used for z0
+  ),
+
+  # LR
+  LinearRegression = cms.PSet (
+    BaseDiffPhiT    = cms.int32 (  -5    ),
+    BaseDiffQoverPt = cms.int32 (  -5    ),
+    BaseDiffZT      = cms.int32 (  -1    ),
+    BaseDiffCot     = cms.int32 ( -11    ),
+    NumIterations   = cms.int32 (  12    ),
+    MinLayers       = cms.int32 (   4    ),
+    MinLayersPS     = cms.int32 (   2    ),
+    ResidPhi        = cms.double(   .001 ),
+    ResidZ2S        = cms.double(  2.5   ),
+    ResidZPS        = cms.double(   .07  )
   )
 
 )
