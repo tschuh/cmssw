@@ -106,7 +106,7 @@ namespace trackerTFP {
           TTDTC::BV bv;
           if (frame < (int)stream.size())
             bv = stream[frame].second;
-          ss << "1v" << hex(bv) << " ";
+          ss << hex(bv);
         }
         ss << endl;
       }
@@ -132,12 +132,12 @@ namespace trackerTFP {
           TTDTC::BV bv;
           if (frame < (int)streamT.size())
             bv = streamT[frame].second;
-          ss << "1v" << hex(bv) << " ";
+          ss << hex(bv);
           bv.reset();
           const TTDTC::Stream& streamS = handleStubsLR->at(region * dataFormats_->numChannel(Process::mht) + channel);
           if (frame < (int)streamS.size())
             bv = streamS[frame].second;
-          ss << "1v" << hex(bv) << " ";
+          ss << hex(bv);
         }
         ss << endl;
       }
