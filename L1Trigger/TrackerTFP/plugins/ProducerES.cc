@@ -36,8 +36,7 @@ namespace trackerTFP {
 
   unique_ptr<DataFormats> ProducerES::produce(const DataFormatsRcd& rcd) {
     const Setup* setup = &rcd.get(esGetToken_);
-    //return make_unique<DataFormats>(iConfig_, setup);
-    return make_unique<DataFormats>(setup);
+    return make_unique<DataFormats>(iConfig_, setup);
   }
 
 }  // namespace trackerTFP

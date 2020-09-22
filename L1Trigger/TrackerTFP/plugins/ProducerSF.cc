@@ -12,7 +12,7 @@
 
 #include "L1Trigger/TrackerDTC/interface/Setup.h"
 #include "L1Trigger/TrackerTFP/interface/DataFormats.h"
-#include "L1Trigger/TrackerTFP/interface/LinearRegression.h"
+#include "L1Trigger/TrackerTFP/interface/SeedFilter.h"
 
 #include <string>
 #include <numeric>
@@ -23,48 +23,49 @@ using namespace trackerDTC;
 
 namespace trackerTFP {
 
-  /*! \class  trackerTFP::ProducerLR
-   *  \brief  L1TrackTrigger Linear Regression emulator
+  /*! \class  trackerTFP::ProducerSF
+   *  \brief  L1TrackTrigger Seed Filter emulator
    *  \author Thomas Schuh
    *  \date   2020, June
    */
-  class ProducerLR : public stream::EDProducer<> {
+  class ProducerSF : public stream::EDProducer<> {
   public:
-    explicit ProducerLR(const ParameterSet&);
-    ~ProducerLR() override {}
+    explicit ProducerSF(const ParameterSet&);
+    ~ProducerSF() override {}
 
   private:
     virtual void beginRun(const Run&, const EventSetup&) override;
     virtual void produce(Event&, const EventSetup&) override;
     virtual void endJob() {}
 
-    // ED input token of gp stubs
+    // ED input token of mht stubs
     EDGetTokenT<TTDTC::Streams> edGetToken_;
-    // ED output token for stub information
-    EDPutTokenT<TTDTC::Streams> edPutTokenStubs_;
-    // ED output token for track information
-    EDPutTokenT<TTDTC::Streams> edPutTokenTracks_;
+    // ED output token for accepted stubs
+    EDPutTokenT<TTDTC::Streams> edPutTokenAccepted_;
+    // ED output token for lost stubs
+    EDPutTokenT<TTDTC::Streams> edPutTokenLost_;
     // Setup token
     ESGetToken<Setup, SetupRcd> esGetTokenSetup_;
     // DataFormats token
     ESGetToken<DataFormats, DataFormatsRcd> esGetTokenDataFormats_;
     // configuration
     ParameterSet iConfig_;
+    // helper class to store configurations
     const Setup* setup_;
     // helper class to extract structured data from TTDTC::Frames
     const DataFormats* dataFormats_;
   };
 
-  ProducerLR::ProducerLR(const ParameterSet& iConfig) :
+  ProducerSF::ProducerSF(const ParameterSet& iConfig) :
     iConfig_(iConfig)
   {
     const string& label = iConfig.getParameter<string>("LabelMHT");
-    const string& branchStubs = iConfig.getParameter<string>("BranchAccepted");
-    const string& branchTracks = iConfig.getParameter<string>("BranchTracks");
+    const string& branchAccepted = iConfig.getParameter<string>("BranchAccepted");
+    const string& branchLost = iConfig.getParameter<string>("BranchLost");
     // book in- and output ED products
-    edGetToken_ = consumes<TTDTC::Streams>(InputTag(label, branchStubs));
-    edPutTokenStubs_ = produces<TTDTC::Streams>(branchStubs);
-    edPutTokenTracks_ = produces<TTDTC::Streams>(branchTracks);
+    edGetToken_ = consumes<TTDTC::Streams>(InputTag(label, branchAccepted));
+    edPutTokenAccepted_ = produces<TTDTC::Streams>(branchAccepted);
+    edPutTokenLost_ = produces<TTDTC::Streams>(branchLost);
     // book ES products
     esGetTokenSetup_ = esConsumes<Setup, SetupRcd, Transition::BeginRun>();
     esGetTokenDataFormats_ = esConsumes<DataFormats, DataFormatsRcd, Transition::BeginRun>();
@@ -73,7 +74,7 @@ namespace trackerTFP {
     dataFormats_ = nullptr;
   }
 
-  void ProducerLR::beginRun(const Run& iRun, const EventSetup& iSetup) {
+  void ProducerSF::beginRun(const Run& iRun, const EventSetup& iSetup) {
     // helper class to store configurations
     setup_ = &iSetup.getData(esGetTokenSetup_);
     if (!setup_->configurationSupported())
@@ -85,29 +86,29 @@ namespace trackerTFP {
     dataFormats_ = &iSetup.getData(esGetTokenDataFormats_);
   }
 
-  void ProducerLR::produce(Event& iEvent, const EventSetup& iSetup) {
-    // empty lr products
-    TTDTC::Streams stubs(dataFormats_->numStreams(Process::mht));
-    TTDTC::Streams tracks(dataFormats_->numStreams(Process::mht));
-    // read in MHT Product and produce LR product
+  void ProducerSF::produce(Event& iEvent, const EventSetup& iSetup) {
+    // empty SF products
+    TTDTC::Streams accepted(dataFormats_->numStreams(Process::mht));
+    TTDTC::Streams lost(dataFormats_->numStreams(Process::mht));
+    // read in MHT Product and produce SF product
     if (setup_->configurationSupported()) {
       Handle<TTDTC::Streams> handle;
       iEvent.getByToken<TTDTC::Streams>(edGetToken_, handle);
       const TTDTC::Streams& streams = *handle.product();
       for (int region = 0; region < setup_->numRegions(); region++) {
-        // object to fit in a region tracks
-        LinearRegression lr(iConfig_, setup_, dataFormats_, region);
+        // object to find in a region finer rough candidates in r-z
+        SeedFilter sf(iConfig_, setup_, dataFormats_, region);
         // read in and organize input product
-        lr.consume(streams);
+        sf.consume(streams);
         // fill output products
-        lr.produce(stubs, tracks);
+        sf.produce(accepted, lost);
       }
     }
     // store products
-    iEvent.emplace(edPutTokenStubs_, move(stubs));
-    iEvent.emplace(edPutTokenTracks_, move(tracks));
+    iEvent.emplace(edPutTokenAccepted_, move(accepted));
+    iEvent.emplace(edPutTokenLost_, move(lost));
   }
 
 } // namespace trackerTFP
 
-DEFINE_FWK_MODULE(trackerTFP::ProducerLR);
+DEFINE_FWK_MODULE(trackerTFP::ProducerSF);

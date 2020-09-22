@@ -58,7 +58,6 @@ namespace trackerTFP {
     vector<deque<StubMHT*>> stubsCells(numBinsQoverPt_ * numCells_);
     for (int channel = 0; channel < numBinsQoverPt_; channel++)
       fill(input_[channel], stubsCells, channel);
-    stubsMHT_.shrink_to_fit();
     // perform static load balancing
     vector<vector<StubMHT*>> streamsSLB(numBinsQoverPt_);
     for (int channel = 0; channel < numBinsQoverPt_; channel++) {
@@ -236,7 +235,6 @@ namespace trackerTFP {
     // cosmetics -- remove gaps at the end of stream
     for(auto it = accepted.end(); it != accepted.begin();)
       it = (*--it) == nullptr ? accepted.erase(it) : accepted.begin();
-    accepted.shrink_to_fit();
   }
 
   //
@@ -245,10 +243,8 @@ namespace trackerTFP {
       return;
     auto maxSize = [](int& size, const vector<StubMHT*>& stream){ return size = max(size, (int)stream.size()); };
     const int nMax = accumulate(streams.begin(), streams.end(), 0, maxSize);
-    for (vector<StubMHT*>& stream : streams) {
-      stream.reserve(nMax);
+    for (vector<StubMHT*>& stream : streams)
       stream.resize(nMax, nullptr);
-    }
     vector<int> prevTrks(numChannel_, -1);
     bool swapping(false);
     vector<int> loads(numChannel_, 0);
@@ -269,6 +265,10 @@ namespace trackerTFP {
       if (swapping)
         swap(streams[0][i], streams[1][i]);
     }
+    // remove all gaps between end and last stub
+    for (vector<StubMHT*>& stream : streams)
+      for(auto it = stream.end(); it != stream.begin();)
+        it = (*--it) ? stream.begin() : stream.erase(it);
   }
 
   // remove and return first element of deque, returns nullptr if empty

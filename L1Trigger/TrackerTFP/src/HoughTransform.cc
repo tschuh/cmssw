@@ -77,8 +77,6 @@ namespace trackerTFP {
         fillIn(inputSector, acceptedSector, lostSector, qOverPt);
         // Process::ht collects all stubs before readout starts -> remove all gaps
         acceptedSector.erase(remove(acceptedSector.begin(), acceptedSector.end(), nullptr), acceptedSector.end());
-        acceptedSector.shrink_to_fit();
-        lostSector.shrink_to_fit();
         // identify tracks
         readOut(acceptedSector, lostSector, acceptedAll, lostAll);
       }

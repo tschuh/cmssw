@@ -67,6 +67,8 @@ namespace trackerDTC {
     int dtcId(int tfpRegion, int tfpChannel) const;
     // checks if given dtcId is connected to PS or 2S sensormodules
     bool psModule(int dtcId) const;
+    // checks if given dtcId is connected via 10 gbps link
+    bool gbps10(int dtcId) const;
     // checks if given dtcId is connected to -z (false) or +z (true)
     bool side(int dtcId) const;
     // ATCA slot number [0-11] of given dtcId
@@ -95,6 +97,18 @@ namespace trackerDTC {
     int barrel(const TTStubRef& ttStubRef) const;
     //
     int psModule(const TTStubRef& ttStubRef) const;
+    //
+    TTBV layerMap(const std::vector<int>& ints) const;
+    //
+    std::vector<int> layerMap(const TTBV& ttBV) const;
+    //
+    double dZ(const TTStubRef& ttStubRef) const;
+    //
+    double v0(const TTStubRef& ttStubRef, double qOverPt) const;
+    //
+    double v1(const TTStubRef& ttStubRef, double cot) const;
+    //
+    const std::vector<SensorModule>& sensorModules() const { return sensorModules_; }
 
     // Common track finding parameter
 
@@ -159,6 +173,8 @@ namespace trackerDTC {
     double neededRangeChiZ() const { return neededRangeChiZ_; }
     // half length of outer tracker in cm
     double halfLength() const { return halfLength_; }
+    // max strip/pixel length of outer tracker sensors in cm
+    double maxLength() const { return maxLength_; }
 
     // Hybrid specific parameter
 
@@ -373,15 +389,17 @@ namespace trackerDTC {
 
     // Parameter specifying SeedFilter
 
+    // used z0 and zT bin width = baseZ * 2 ** this
+    int sfBaseDiff() const { return sfBaseDiff_; }
     // required number of stub layers to form a candidate
     int sfMinLayers() const { return sfMinLayers_; }
-    // cot(theta) precision
-    double sfBaseCot() const { return sfBaseCot_; }
-    // zT precision in cm
-    double sfBaseZT() const { return sfBaseZT_; }
+    // max number of output tracks per node
+    int sfMaxTracks() const { return sfMaxTracks_; }
 
     // Parameter specifying KalmanFilter
 
+    // number of kf worker
+    int kfNumWorker() const { return kfNumWorker_; }
     // number of bits for internal reciprocal look up
     int kfWidthLutInvPhi() const { return kfWidthLutInvPhi_; }
     // number of bits for internal reciprocal look up
@@ -636,6 +654,8 @@ namespace trackerDTC {
     double halfLength_;
     // max strip/pixel pitch of outer tracker sensors in cm
     double maxPitch_;
+    // max strip/pixel length of outer tracker sensors in cm
+    double maxLength_;
 
     // Parameter specifying front-end
     edm::ParameterSet pSetFE_;
@@ -686,6 +706,10 @@ namespace trackerDTC {
     int offsetLayerId_;
     // total number of output channel
     int dtcNumStreams_;
+    // slot number changing from PS to 2S (default: 6)
+    int slotLimitPS_;
+    // slot number changing from 10 gbps to 5gbps (default: 3)
+    int slotLimit10gbps_;
 
     // Parameter specifying GeometricProcessor
     edm::ParameterSet pSetGP_;
@@ -734,15 +758,17 @@ namespace trackerDTC {
 
     // Parameter specifying SeedFilter
     edm::ParameterSet pSetSF_;
-    // used cot(Theta) bin width = 2 ** this
-    int sfPowerBaseCot_;
-    // used zT bin width = baseZ * 2 ** this
-    int sfBaseDiffZ_;
+    // used z0 and zT bin width = baseZ * 2 ** this
+    int sfBaseDiff_;
     // required number of stub layers to form a candidate
     int sfMinLayers_;
+    // max number of output tracks per node
+    int sfMaxTracks_;
 
     // Parameter specifying KalmanFilter
     edm::ParameterSet pSetKF_;
+    // number of kf worker
+    int kfNumWorker_;
     // number of bits for internal reciprocal look up
     int kfWidthLutInvPhi_;
     // number of bits for internal reciprocal look up
@@ -757,6 +783,8 @@ namespace trackerDTC {
     int kfMaxStubsPerLayer_;
     // maximum allowed skipped layers from inside to outside to form a track
     int kfMaxSkippedLayers_;
+    //
+    int kfWidthLayerCount_;
     int kfBaseShiftr0_;
     int kfBaseShiftr02_;
     int kfBaseShiftv0_;
@@ -970,11 +998,6 @@ namespace trackerDTC {
     double mhtBasePhiT_;
 
     // SF
-
-    // cot(theta) precision
-    double sfBaseCot_;
-    // zT precision in cm
-    double sfBaseZT_;
 
     // KF
 

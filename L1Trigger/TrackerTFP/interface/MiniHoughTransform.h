@@ -58,6 +58,8 @@ namespace trackerTFP {
     std::vector<StubMHT> stubsMHT_;
     //
     std::vector<std::vector<StubHT*>> input_;
+    //
+    std::vector<StubMHT*> test_;
   };
 
 }

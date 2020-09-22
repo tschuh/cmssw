@@ -5,13 +5,11 @@
 #include "L1Trigger/TrackerDTC/interface/SetupRcd.h"
 #include "boost/mpl/vector.hpp"
 
-using namespace trackerDTC;
-
 namespace trackerTFP {
 
-  typedef boost::mpl::vector<SetupRcd> Rcds;
+  typedef boost::mpl::vector<trackerDTC::SetupRcd> RcdsDataFormats;
 
-  class DataFormatsRcd : public edm::eventsetup::DependentRecordImplementation<DataFormatsRcd, Rcds> {};
+  class DataFormatsRcd : public edm::eventsetup::DependentRecordImplementation<DataFormatsRcd, RcdsDataFormats> {};
 
 }  // namespace trackerTFP
 

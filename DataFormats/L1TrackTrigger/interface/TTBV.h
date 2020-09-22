@@ -13,7 +13,7 @@
 /*! 
  * \class  TTBV
  * \brief  Bit vector used by Track Trigger emulators. Mainly used to convert
- *         integers into arbitrary (within margin) sized two's complement string.
+ *         integers into arbitrary (within margin) sized two's complement strings.
  * \author Thomas Schuh
  * \date   2020, Jan
  */
@@ -28,7 +28,7 @@ private:
 
 public:
   // constructor: default
-  TTBV() : twos_(false), size_(0), bs_(std::bitset<S>(0)) {}
+  TTBV() : twos_(false), size_(0), bs_() {}
 
   // constructor: double precision (IEEE 754); from most to least significant bit: 1 bit sign + 11 bit binary exponent + 52 bit binary mantisse
   TTBV(const double d) : twos_(false), size_(S) {

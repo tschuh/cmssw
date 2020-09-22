@@ -101,6 +101,7 @@ namespace trackerDTC {
         innerRadius_(pSetFW_.getParameter<double>("InnerRadius")),
         halfLength_(pSetFW_.getParameter<double>("HalfLength")),
         maxPitch_(pSetFW_.getParameter<double>("MaxPitch")),
+        maxLength_(pSetFW_.getParameter<double>("MaxLength")),
         // Parmeter specifying front-end
         pSetFE_(iConfig.getParameter<ParameterSet>("FrontEnd")),
         widthBend_(pSetFE_.getParameter<int>("WidthBend")),
@@ -126,6 +127,8 @@ namespace trackerDTC {
         offsetDetIdTP_(pSetDTC_.getParameter<int>("OffsetDetIdTP")),
         offsetLayerDisks_(pSetDTC_.getParameter<int>("OffsetLayerDisks")),
         offsetLayerId_(pSetDTC_.getParameter<int>("OffsetLayerId")),
+        slotLimitPS_(pSetDTC_.getParameter<int>("SlotLimitPS")),
+        slotLimit10gbps_(pSetDTC_.getParameter<int>("SlotLimit10gbps")),
         // Parmeter specifying GeometricProcessor
         pSetGP_(iConfig.getParameter<ParameterSet>("GeometricProcessor")),
         numSectorsPhi_(pSetGP_.getParameter<int>("NumSectorsPhi")),
@@ -149,11 +152,12 @@ namespace trackerDTC {
         mhtMinLayers_(pSetMHT_.getParameter<int>("MinLayers")),
         // Parmeter specifying SeedFilter
         pSetSF_(iConfig.getParameter<ParameterSet>("SeedFilter")),
-        sfPowerBaseCot_(pSetSF_.getParameter<int>("PowerBaseCot")),
-        sfBaseDiffZ_(pSetSF_.getParameter<int>("BaseDiffZ")),
+        sfBaseDiff_(pSetSF_.getParameter<int>("BaseDiff")),
         sfMinLayers_(pSetSF_.getParameter<int>("MinLayers")),
+        sfMaxTracks_(pSetSF_.getParameter<int>("MaxTracks")),
         // Parmeter specifying KalmanFilter
         pSetKF_(iConfig.getParameter<ParameterSet>("KalmanFilter")),
+        kfNumWorker_(pSetKF_.getParameter<int>("NumWorker")),
         kfWidthLutInvPhi_(pSetKF_.getParameter<int>("WidthLutInvPhi")),
         kfWidthLutInvZ_(pSetKF_.getParameter<int>("WidthLutInvZ")),
         kfNumTracks_(pSetKF_.getParameter<int>("NumTracks")),
@@ -316,7 +320,13 @@ namespace trackerDTC {
   bool Setup::psModule(int dtcId) const {
     checkDTCId(dtcId);
     // from tklayout: first 3 are 10 gbps PS, next 3 are 5 gbps PS and residual 6 are 5 gbps 2S modules
-    return slot(dtcId) < numATCASlots_ / 2;
+    return slot(dtcId) < slotLimitPS_;
+  }
+
+  // checks if given dtcId is connected via 10 gbps link
+  bool Setup::gbps10(int dtcId) const {
+    checkDTCId(dtcId);
+    return slot(dtcId) < slotLimit10gbps_;
   }
 
   // checks if given dtcId is connected to -z (false) or +z (true)
@@ -530,6 +540,58 @@ namespace trackerDTC {
     return trackerGeometry_->getDetectorType(detId) == TrackerGeometry::ModuleType::Ph2PSP;
   }
 
+  //
+  TTBV Setup::layerMap(const vector<int>& ints) const {
+    TTBV ttBV;
+    for (int count : ints)
+      ttBV += TTBV(count - 1, kfWidthLayerCount_);
+    return ttBV;
+  }
+
+  //
+  vector<int> Setup::layerMap(const TTBV& ttBV) const {
+    TTBV bv(ttBV);
+    vector<int> ints(numLayers_, 0);
+    for (int& i : ints) {
+      i = bv.extract(kfWidthLayerCount_) + 1;
+      if (i == kfMaxStubsPerLayer_)
+       i = 0;
+    }
+    return ints;
+  }
+
+  //
+  double Setup::dZ(const TTStubRef& ttStubRef) const {
+    const DetId& detId = ttStubRef->getDetId();
+    SensorModule* sm = sensorModule(detId + 1);
+    static const double m_approx = 0.886;
+    static const double c_approx = 0.504;
+    const double m = sm->tilt() != 0. && sm->barrel() ? m_approx : sm->sin();
+    const double c = sm->tilt() != 0. && sm->barrel() ? c_approx : sm->cos();
+    const double cot = sm->z() / sm->r();
+    const double cor = abs(m * cot) + c;
+    return cor * sm->pitchCol();
+  }
+
+  //
+  double Setup::v0(const TTStubRef& ttStubRef, double qOverPt) const {
+    const DetId& detId = ttStubRef->getDetId();
+    SensorModule* sm = sensorModule(detId + 1);
+    const double r = stubPos(ttStubRef).perp();
+    const double sigma = pow(sm->pitchRow() / r, 2) / 12.;
+    const double scat = pow(0.00075 * qOverPt, 2);
+    const double extra = sm->barrel() ? 0. : pow(sm->pitchCol() * qOverPt, 2);
+    return sigma + scat + extra;
+
+  }
+
+  //
+  double Setup::v1(const TTStubRef& ttStubRef, double cot) const {
+    const DetId& detId = ttStubRef->getDetId();
+    SensorModule* sm = sensorModule(detId + 1);
+    return pow(sm->pitchCol() * (sm->barrel() ? 1. : cot), 2 ) / 12.;
+  }
+
   // checks if stub collection is considered forming a reconstructable track 
   bool Setup::reconstructable(const vector<TTStubRef>& ttStubRefs) const {
     set<int> hitPattern;
@@ -650,14 +712,13 @@ namespace trackerDTC {
     mhtBaseQoverPt_ = htBaseQoverPt_ / mhtNumBinsQoverPt_;
     mhtBasePhiT_ = htBasePhiT_ / mhtNumBinsPhiT_;
     // SF
-    sfBaseCot_ = pow(2, sfPowerBaseCot_);
-    sfBaseZT_ = baseZ_ * pow(2, sfBaseDiffZ_);
     // DR
     drBaseQoverPt_ = htBaseQoverPt_ * pow(2, htWidthQoverPt_ - drWidthQoverPt_);
     drBasePhi0_ = basePhi_ * pow(2, widthPhiDTC_ - drWidthPhi0_);
     drBaseCot_ = floor(log2(2. * maxCot_ * pow(2, -drWidthCot_)));
     drBaseZ0_ = baseZ_ * pow(2, ceil(log2(2. * beamWindowZ_ / baseZ_)) - drWidthZ0_);
     // KF
+    kfWidthLayerCount_ = ceil(log2(kfMaxStubsPerLayer_));
     kfBasex0_ = drBaseQoverPt_;
     kfBasex1_ = drBasePhi0_;
     kfBasex2_ = drBaseCot_;

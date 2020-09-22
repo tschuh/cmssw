@@ -30,7 +30,7 @@ TrackTrigger_params = cms.PSet (
     MinPt            = cms.double(  3.   ), # cut on stub and TP pt, also defines region overlap shape in GeV
     MaxEta           = cms.double(  2.4  ), # cut on stub eta
     ChosenRofPhi     = cms.double( 67.24 ), # critical radius defining region overlap shape in cm
-    NumLayers        = cms.int32 (  7    ), # number of detector layers a reconstructbale particle may cross
+    NumLayers        = cms.int32 (  8    ), # number of detector layers a reconstructbale particle may cross
     WidthR           = cms.int32 ( 12    ), # number of bits used for stub r - ChosenRofPhi
     WidthPhi         = cms.int32 ( 14    ), # number of bits used for stub phi w.r.t. phi sector centre
     WidthZ           = cms.int32 ( 14    )  # number of bits used for stub z
@@ -85,7 +85,8 @@ TrackTrigger_params = cms.PSet (
     OuterRadius    = cms.double( 112.7              ), # outer radius of outer tracker in cm
     InnerRadius    = cms.double(  21.8              ), # inner radius of outer tracker in cm
     HalfLength     = cms.double( 270.               ), # half length of outer tracker in cm
-    MaxPitch       = cms.double(    .01             )  # max strip/pixel pitch of outer tracker sensors in cm
+    MaxPitch       = cms.double(    .01             ), # max strip/pixel pitch of outer tracker sensors in cm
+    MaxLength      = cms.double(   2.5              )  # max strip/pixel length of outer tracker sensors in cm
   ),
 
   # Parmeter specifying front-end
@@ -102,27 +103,29 @@ TrackTrigger_params = cms.PSet (
 
   # Parmeter specifying DTC 
   DTC = cms.PSet (
-    NumRegions            = cms.int32 (  9    ), # number of phi slices the outer tracker readout is organized in
-    NumOverlappingRegions = cms.int32 (  2    ), # number of regions a reconstructable particles may cross
-    NumATCASlots          = cms.int32 ( 12    ), # number of Slots in used ATCA crates
-    NumDTCsPerRegion      = cms.int32 ( 24    ), # number of DTC boards used to readout a detector region, likely constructed to be an integerer multiple of NumSlots_
-    NumModulesPerDTC      = cms.int32 ( 72    ), # max number of sensor modules connected to one DTC board
-    NumRoutingBlocks      = cms.int32 (  2    ), # number of systiloic arrays in stub router firmware
-    DepthMemory           = cms.int32 ( 64    ), # fifo depth in stub router firmware
-    WidthRowLUT           = cms.int32 (  4    ), # number of row bits used in look up table
-    WidthQoverPt          = cms.int32 (  9    ), # number of bits used for stub qOverPt. lut addr is col + bend = 11 => 1 BRAM -> 18 bits for min and max val -> 9
-    OffsetDetIdDSV        = cms.int32 (  1    ), # tk layout det id minus DetSetVec->detId
-    OffsetDetIdTP         = cms.int32 ( -1    ), # tk layout det id minus TrackerTopology lower det id
-    OffsetLayerDisks      = cms.int32 ( 10    ), # offset in layer ids between barrel layer and endcap disks
-    OffsetLayerId         = cms.int32 (  1    )  # offset between 0 and smallest layer id (barrel layer 1)
+    NumRegions            = cms.int32(  9 ), # number of phi slices the outer tracker readout is organized in
+    NumOverlappingRegions = cms.int32(  2 ), # number of regions a reconstructable particles may cross
+    NumATCASlots          = cms.int32( 12 ), # number of Slots in used ATCA crates
+    NumDTCsPerRegion      = cms.int32( 24 ), # number of DTC boards used to readout a detector region, likely constructed to be an integerer multiple of NumSlots_
+    NumModulesPerDTC      = cms.int32( 72 ), # max number of sensor modules connected to one DTC board
+    NumRoutingBlocks      = cms.int32(  2 ), # number of systiloic arrays in stub router firmware
+    DepthMemory           = cms.int32( 64 ), # fifo depth in stub router firmware
+    WidthRowLUT           = cms.int32(  4 ), # number of row bits used in look up table
+    WidthQoverPt          = cms.int32(  9 ), # number of bits used for stub qOverPt. lut addr is col + bend = 11 => 1 BRAM -> 18 bits for min and max val -> 9
+    OffsetDetIdDSV        = cms.int32(  1 ), # tk layout det id minus DetSetVec->detId
+    OffsetDetIdTP         = cms.int32( -1 ), # tk layout det id minus TrackerTopology lower det id
+    OffsetLayerDisks      = cms.int32( 10 ), # offset in layer ids between barrel layer and endcap disks
+    OffsetLayerId         = cms.int32(  1 ), # offset between 0 and smallest layer id (barrel layer 1)
+    SlotLimitPS           = cms.int32(  6 ), # slot number changing from PS to 2S
+    SlotLimit10gbps       = cms.int32(  3 )  # slot number changing from 10 gbps to 5gbps
   ),
 
   # Parmeter specifying GeometricProcessor
   GeometricProcessor = cms.PSet (
-    NumSectorsPhi = cms.int32 (  2  ), # number of phi sectors used in hough transform
-    ChosenRofZ    = cms.double( 50. ), # critical radius defining r-z sector shape in cm
-    RangeChiZ     = cms.double( 90. ), # range of stub z residual w.r.t. sector center which needs to be covered
-    DepthMemory   = cms.int32 ( 64  ), # fifo depth in stub router firmware
+    NumSectorsPhi = cms.int32 (   2  ), # number of phi sectors used in hough transform
+    ChosenRofZ    = cms.double(  50. ), # critical radius defining r-z sector shape in cm
+    RangeChiZ     = cms.double( 160. ), # range of stub z residual w.r.t. sector center which needs to be covered
+    DepthMemory   = cms.int32 (  64  ), # fifo depth in stub router firmware
     BoundariesEta = cms.vdouble( -2.40, -2.08, -1.68, -1.26, -0.90, -0.62, -0.41, -0.20, 0.0, 0.20, 0.41, 0.62, 0.90, 1.26, 1.68, 2.08, 2.40 ) # defining r-z sector shape
   ),
 
@@ -146,13 +149,15 @@ TrackTrigger_params = cms.PSet (
 
   # Parmeter specifying SeedFilter
   SeedFilter = cms.PSet (
-    PowerBaseCot     = cms.int32( -6 ), # used cot(Theta) bin width = 2 ** this
-    BaseDiffZ        = cms.int32(  4 ), # used zT bin width = baseZ * 2 ** this
-    MinLayers        = cms.int32(  4 )  # required number of stub layers to form a candidate
+    #BaseDiff  = cms.int32( 7 ), # used z0 and zT bin width = baseZ * 2 ** this
+    BaseDiff  = cms.int32(  6 ), # used z0 and zT bin width = baseZ * 2 ** this
+    MinLayers = cms.int32(  4 ), # required number of stub layers to form a candidate
+    MaxTracks = cms.int32( 16 )  # max number of output tracks per node
   ),
 
   # Parmeter specifying KalmanFilter
   KalmanFilter = cms.PSet (
+    NumWorker        = cms.int32(   2 ), # number of kf worker
     WidthLutInvPhi   = cms.int32(  10 ), # number of bits for internal reciprocal look up
     WidthLutInvZ     = cms.int32(  10 ), # number of bits for internal reciprocal look up
     NumTracks        = cms.int32(  16 ), # cut on number of input candidates

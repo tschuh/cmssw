@@ -28,5 +28,11 @@
   <class name="edm::Wrapper<TTDTC>"/>
   <class name="TTDTC::Streams"/>
   <class name="edm::Wrapper<TTDTC::Streams>"/>
+  <class name="StreamsTrack"/>
+  <class name="edm::Wrapper<StreamsTrack>"/>
+  <class name="TTTracks"/>
+  <class name="edm::Wrapper<TTTracks>"/>
+  <class name="std::vector<TTTracks>"/>
+  <class name="edm::Wrapper<std::vector<TTTracks>>"/>
 </lcgdict>
 
