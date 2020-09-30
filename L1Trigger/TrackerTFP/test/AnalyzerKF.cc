@@ -15,6 +15,7 @@
 #include "SimTracker/TrackTriggerAssociation/interface/StubAssociation.h"
 #include "L1Trigger/TrackerDTC/interface/Setup.h"
 #include "L1Trigger/TrackerTFP/interface/DataFormats.h"
+#include "L1Trigger/TrackerTFP/interface/LayerEncoding.h"
 #include "L1Trigger/TrackerTFP/interface/KalmanFilterFormats.h"
 
 #include <TProfile.h>
@@ -53,17 +54,25 @@ namespace trackerTFP {
     void associate(const TTTracks& ttTracks, const StubAssociation* ass, set<TPPtr>& tps, int& sum) const;
 
     // ED input token of accepted TTTracks
-    EDGetTokenT<vector<TTTracks>> edGetTokenAccepted_;
+    EDGetTokenT<StreamsTrack> edGetTokenAccepted_;
     // ED input token of lost TTTracks
-    EDGetTokenT<vector<TTTracks>> edGetTokenLost_;
+    EDGetTokenT<StreamsTrack> edGetTokenLost_;
     // ED input token of TTStubRef to selected TPPtr association
     EDGetTokenT<StubAssociation> edGetTokenSelection_;
     // ED input token of TTStubRef to recontructable TPPtr association
     EDGetTokenT<StubAssociation> edGetTokenReconstructable_;
     // Setup token
     ESGetToken<Setup, SetupRcd> esGetTokenSetup_;
+    // DataFormats token
+    ESGetToken<DataFormats, DataFormatsRcd> esGetTokenDataFormats_;
+    // LayerEncoding token
+    ESGetToken<LayerEncoding, LayerEncodingRcd> esGetTokenLayerEncoding_;
     // stores, calculates and provides run-time constants
     const Setup* setup_;
+    //
+    const DataFormats* dataFormats_;
+    //
+    const LayerEncoding* layerEncoding_;
     // enables analyze of TPs
     bool useMCTruth_;
     //
@@ -85,8 +94,8 @@ namespace trackerTFP {
     const string& label = iConfig.getParameter<string>("LabelKF");
     const string& branchAccepted = iConfig.getParameter<string>("BranchAccepted");
     const string& branchLost = iConfig.getParameter<string>("BranchLost");
-    edGetTokenAccepted_ = consumes<vector<TTTracks>>(InputTag(label, branchAccepted));
-    edGetTokenLost_ = consumes<vector<TTTracks>>(InputTag(label, branchLost));
+    edGetTokenAccepted_ = consumes<StreamsTrack>(InputTag(label, branchAccepted));
+    edGetTokenLost_ = consumes<StreamsTrack>(InputTag(label, branchLost));
     if (useMCTruth_) {
       const auto& inputTagSelecttion = iConfig.getParameter<InputTag>("InputTagSelection");
       const auto& inputTagReconstructable = iConfig.getParameter<InputTag>("InputTagReconstructable");
@@ -95,8 +104,12 @@ namespace trackerTFP {
     }
     // book ES products
     esGetTokenSetup_ = esConsumes<Setup, SetupRcd, Transition::BeginRun>();
+    esGetTokenDataFormats_ = esConsumes<DataFormats, DataFormatsRcd, Transition::BeginRun>();
+    esGetTokenLayerEncoding_ = esConsumes<LayerEncoding, LayerEncodingRcd, Transition::BeginRun>();
     // initial ES products
     setup_ = nullptr;
+    dataFormats_ = nullptr;
+    layerEncoding_ = nullptr;
     // log config
     log_.setf(ios::fixed, ios::floatfield);
     log_.precision(4);
@@ -105,10 +118,12 @@ namespace trackerTFP {
   void AnalyzerKF::beginRun(const Run& iEvent, const EventSetup& iSetup) {
     // helper class to store configurations
     setup_ = &iSetup.getData(esGetTokenSetup_);
+    dataFormats_ = &iSetup.getData(esGetTokenDataFormats_);
+    layerEncoding_ = &iSetup.getData(esGetTokenLayerEncoding_);
     // book histograms
     Service<TFileService> fs;
     TFileDirectory dir;
-    dir = fs->mkdir("KFin");
+    dir = fs->mkdir("KF");
     prof_ = dir.make<TProfile>("Counts", ";", 9, 0.5, 9.5);
     prof_->GetXaxis()->SetBinLabel(1, "Stubs");
     prof_->GetXaxis()->SetBinLabel(2, "Tracks");
@@ -128,10 +143,10 @@ namespace trackerTFP {
 
   void AnalyzerKF::analyze(const Event& iEvent, const EventSetup& iSetup) {
     // read in kf products
-    Handle<vector<TTTracks>> handleAccepted;
-    iEvent.getByToken<vector<TTTracks>>(edGetTokenAccepted_, handleAccepted);
-    Handle<vector<TTTracks>> handleLost;
-    iEvent.getByToken<vector<TTTracks>>(edGetTokenLost_, handleLost);
+    Handle<StreamsTrack> handleAccepted;
+    iEvent.getByToken<StreamsTrack>(edGetTokenAccepted_, handleAccepted);
+    Handle<StreamsTrack> handleLost;
+    iEvent.getByToken<StreamsTrack>(edGetTokenLost_, handleLost);
     // read in MCTruth
     const StubAssociation* selection = nullptr;
     const StubAssociation* reconstructable = nullptr;
@@ -150,20 +165,31 @@ namespace trackerTFP {
     set<TPPtr> tpPtrsLost;
     int allMatched(0);
     int allTracks(0);
+    auto toTTTrack = [this](const FrameTrack& frame) {
+      TrackKF track(frame, dataFormats_);
+      layerEncoding_->addTTStubRefs(track);
+      return track.ttTrack();
+    };
     for (int region = 0; region < setup_->numRegions(); region++) {
-      const TTTracks& accepted = handleAccepted->at(region);
-      const TTTracks& lost = handleLost->at(region);
+      const StreamTrack& accepted = handleAccepted->at(region);
+      const StreamTrack& lost = handleLost->at(region);
       hisChannel_->Fill(accepted.size());
       profChannel_->Fill(region, accepted.size());
-      const int nTracks = accepted.size();
-      const int nLost = lost.size();
+      TTTracks tracks;
+      const int nTracks = accumulate(accepted.begin(), accepted.end(), 0, [](int& sum, const FrameTrack& frame){ return sum += frame.first.isNonnull() ? 1 : 0; });
+      tracks.reserve(nTracks);
+      transform(accepted.begin(), accepted.end(), back_inserter(tracks), toTTTrack);
+      TTTracks tracksLost;
+      const int nLost = accumulate(lost.begin(), lost.end(), 0, [](int& sum, const FrameTrack& frame){ return sum += frame.first.isNonnull() ? 1 : 0; });
+      tracksLost.reserve(nLost);
+      transform(lost.begin(), lost.end(), back_inserter(tracksLost), toTTTrack);
       allTracks += nTracks;
       if (!useMCTruth_)
         continue;
       int tmp(0);
-      associate(accepted, selection, tpPtrsSelection, tmp);
-      associate(lost, selection, tpPtrsLost, tmp);
-      associate(accepted, reconstructable, tpPtrs, allMatched);
+      associate(tracks, selection, tpPtrsSelection, tmp);
+      associate(tracksLost, selection, tpPtrsLost, tmp);
+      associate(tracks, reconstructable, tpPtrs, allMatched);
       prof_->Fill(2, nTracks);
       prof_->Fill(3, nLost);
     }

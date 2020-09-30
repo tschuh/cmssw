@@ -16,7 +16,8 @@ namespace trackerTFP {
   DataFormats::DataFormats() :
     numDataFormats_(0),
     formats_(+Variable::end, std::vector<DataFormat*>(+Process::end, nullptr)),
-    numUnusedBits_(+Process::end, TTBV::S),
+    numUnusedBitsStubs_(+Process::end, TTBV::S),
+    numUnusedBitsTracks_(+Process::end, TTBV::S),
     numChannel_(+Process::end, 0)
   {
     setup_ = nullptr;
@@ -41,7 +42,10 @@ namespace trackerTFP {
     fillDataFormats();
     for (const Process p : Processes)
       for (const Variable v : stubs_[+p])
-        numUnusedBits_[+p] -= formats_[+v][+p] ? formats_[+v][+p]->width() : 0;
+        numUnusedBitsStubs_[+p] -= formats_[+v][+p] ? formats_[+v][+p]->width() : 0;
+    for (const Process p : Processes)
+      for (const Variable v : tracks_[+p])
+        numUnusedBitsTracks_[+p] -= formats_[+v][+p] ? formats_[+v][+p]->width() : 0;
     numChannel_[+Process::dtc] = setup_->numDTCsPerRegion();
     numChannel_[+Process::pp] = setup_->numDTCsPerTFP();
     numChannel_[+Process::gp] = setup_->numSectors();
@@ -75,32 +79,61 @@ namespace trackerTFP {
   }
 
   template<typename ...Ts>
-  void DataFormats::convert(const TTDTC::BV& bv, tuple<Ts...>& data, Process p) const {
+  void DataFormats::convertStub(const TTDTC::BV& bv, tuple<Ts...>& data, Process p) const {
     TTBV ttBV(bv);
-    extract(ttBV, data, p);
+    extractStub(ttBV, data, p);
   }
 
   template<int it = 0, typename ...Ts>
-  void DataFormats::extract(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const {
+  void DataFormats::extractStub(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const {
     Variable v = *next(stubs_[+p].begin(), sizeof...(Ts) - 1 - it);
     formats_[+v][+p]->extract(ttBV, get<sizeof...(Ts) - 1 - it>(data));
     if constexpr(it + 1 != sizeof...(Ts))
-      extract<it + 1>(ttBV, data, p);
+      extractStub<it + 1>(ttBV, data, p);
   }
 
   template<typename... Ts>
-  void DataFormats::convert(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const {
-    TTBV ttBV(1, TTBV::S);
-    attach(data, ttBV, p);
+  void DataFormats::convertStub(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const {
+    TTBV ttBV(1, numUnusedBitsStubs_[+p]);
+    attachStub(data, ttBV, p);
     bv = ttBV.bs();
   }
 
   template<int it = 0, typename... Ts>
-  void DataFormats::attach(const tuple<Ts...>& data, TTBV& ttBV, Process p) const {
+  void DataFormats::attachStub(const tuple<Ts...>& data, TTBV& ttBV, Process p) const {
     Variable v = *next(stubs_[+p].begin(), it);
     formats_[+v][+p]->attach(get<it>(data), ttBV);
     if constexpr(it + 1 != sizeof...(Ts))
-      attach<it + 1>(data, ttBV, p);
+      attachStub<it + 1>(data, ttBV, p);
+  }
+
+  template<typename ...Ts>
+  void DataFormats::convertTrack(const TTDTC::BV& bv, tuple<Ts...>& data, Process p) const {
+    TTBV ttBV(bv);
+    extractTrack(ttBV, data, p);
+  }
+
+  template<int it = 0, typename ...Ts>
+  void DataFormats::extractTrack(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const {
+    Variable v = *next(tracks_[+p].begin(), sizeof...(Ts) - 1 - it);
+    formats_[+v][+p]->extract(ttBV, get<sizeof...(Ts) - 1 - it>(data));
+    if constexpr(it + 1 != sizeof...(Ts))
+      extractTrack<it + 1>(ttBV, data, p);
+  }
+
+  template<typename... Ts>
+  void DataFormats::convertTrack(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const {
+    TTBV ttBV(1, numUnusedBitsTracks_[+p]);
+    attachTrack(data, ttBV, p);
+    bv = ttBV.bs();
+  }
+
+  template<int it = 0, typename... Ts>
+  void DataFormats::attachTrack(const tuple<Ts...>& data, TTBV& ttBV, Process p) const {
+    Variable v = *next(tracks_[+p].begin(), it);
+    formats_[+v][+p]->attach(get<it>(data), ttBV);
+    if constexpr(it + 1 != sizeof...(Ts))
+      attachTrack<it + 1>(data, ttBV, p);
   }
 
   template<typename ...Ts>
@@ -110,7 +143,7 @@ namespace trackerTFP {
     frame_(frame),
     trackId_(0)
   {
-    dataFormats_->convert(frame.second, data_, p_);
+    dataFormats_->convertStub(frame.second, data_, p_);
   }
 
   template<typename ...Ts>
@@ -149,7 +182,7 @@ namespace trackerTFP {
     const Setup* setup = dataFormats_->setup();
     get<1>(data_) -= (sectorPhi_ - .5) * setup->baseSector();
     get<2>(data_) -= (r() + setup->chosenRofPhi()) * setup->sectorCot(sectorEta_);
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertStub(data_, frame_.second, p_);
   }
 
   StubHT::StubHT(const TTDTC::Frame& frame, const DataFormats* formats, int qOverPt) :
@@ -164,7 +197,7 @@ namespace trackerTFP {
   {
     get<1>(data_) += format(Variable::qOverPt).floating(this->qOverPt()) * r() - format(Variable::phiT).floating(this->phiT());
     fillTrackId();
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertStub(data_, frame_.second, p_);
   }
 
   void StubHT::fillTrackId() {
@@ -185,7 +218,7 @@ namespace trackerTFP {
     get<6>(data_) = this->phiT() * setup->mhtNumBinsPhiT() + phiT;
     get<7>(data_) = this->qOverPt() * setup->mhtNumBinsQoverPt() + qOverPt;
     get<1>(data_) += base(Variable::qOverPt) * (qOverPt - .5) * r() - base(Variable::phiT) * (phiT - .5);
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertStub(data_, frame_.second, p_);
     fillTrackId();
   }
 
@@ -201,9 +234,13 @@ namespace trackerTFP {
   }
 
   StubSF::StubSF(const StubMHT& stub, int z0, int cot) :
-    Stub(stub, stub.r(), stub.phi(), stub.z(), stub.layer(), stub.sectorPhi(), stub.sectorEta(), stub.phiT(), stub.qOverPt(), z0, cot)
+    Stub(stub, stub.r(), stub.phi(), 0., stub.layer(), stub.sectorPhi(), stub.sectorEta(), stub.phiT(), stub.qOverPt(), z0, cot)
   {
-    dataFormats_->convert(data_, frame_.second, p_);
+    const double z0D = format(Variable::z0).floating(z0);
+    const double cotD = format(Variable::cot).floating(cot);
+    const Setup* setup = dataFormats_->setup();
+    get<2>(data_) = stub.z() - (z0D + cotD * (stub.r() + setup->chosenRofPhi()));
+    dataFormats_->convertStub(data_, frame_.second, p_);
     fillTrackId();
   }
 
@@ -223,7 +260,7 @@ namespace trackerTFP {
     Stub(stub, stub.r(), stub.phi(), stub.z(), trackId),
     layer_(layer)
   {
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertStub(data_, frame_.second, p_);
     trackId_ = trackId;
   }
 
@@ -233,7 +270,7 @@ namespace trackerTFP {
     p_(p),
     frame_(frame)
   {
-    dataFormats_->convert(frame.second, data_, p_);
+    dataFormats_->convertTrack(frame.second, data_, p_);
   }
 
   template<typename ...Ts>
@@ -270,26 +307,41 @@ namespace trackerTFP {
   }
 
   TrackKFin::TrackKFin(const StubSF& stub, const TTTrackRef& ttTrackRef, const TTBV& hitPattern, const TTBV& layerMap) :
-    Track(stub, ttTrackRef, hitPattern, layerMap, stub.phiT(), stub.qOverPt(), stub.z0(), stub.cot(), stub.sectorPhi(), stub.sectorEta(), ttTrackRef->hitPattern()),
+    Track(stub, ttTrackRef, hitPattern, layerMap, 0., 0., 0., 0., stub.sectorPhi(), stub.sectorEta(), ttTrackRef->hitPattern()),
     stubs_(setup()->numLayers())
   {
-    dataFormats_->convert(data_, frame_.second, p_);
+    get<2>(data_) = format(Variable::phiT, Process::mht).floating(stub.phiT());
+    get<3>(data_) = format(Variable::qOverPt, Process::mht).floating(stub.qOverPt());
+    get<4>(data_) = format(Variable::z0, Process::sf).floating(stub.z0());
+    get<5>(data_) = format(Variable::cot, Process::sf).floating(stub.cot());
+    dataFormats_->convertTrack(data_, frame_.second, p_);
   }
 
-  TrackKF::TrackKF(const FrameTrack& frame, const DataFormats* dataFormats, const vector<TTStubRef>& ttStubRefs) :
-    Track(frame, dataFormats, Process::kf),
-    ttStubRefs_(ttStubRefs) {}
+  vector<TTStubRef> TrackKFin::ttStubRefs(const TTBV& hitPattern, const vector<int>& layerMap) const {
+    vector<TTStubRef> stubs;
+    stubs.reserve(hitPattern.count());
+    for (int layer = 0; layer < setup()->numLayers(); layer++)
+      if (hitPattern[layer])
+        stubs.push_back(stubs_[layer][layerMap[layer]]->ttStubRef());
+    return stubs;
+  }
 
-  TrackKF::TrackKF(const TrackKFin& track, double phiT, double qOverPt, double z0, double cot, const TTBV& hitPattern, const TTBV& layerMap, const vector<TTStubRef>& ttStubRefs) :
+  TrackKF::TrackKF(const FrameTrack& frame, const DataFormats* dataFormats) :
+    Track(frame, dataFormats, Process::kf)
+  {
+    ttStubRefs_.reserve(hitPattern().count());
+  }
+
+  TrackKF::TrackKF(const TrackKFin& track, double phiT, double qOverPt, double z0, double cot, const TTBV& hitPattern, const TTBV& layerMap) :
     Track(track, hitPattern, layerMap, 0., 0., 0., 0., track.sectorPhi(), track.sectorEta(), false),
-    ttStubRefs_(ttStubRefs)
+    ttStubRefs_(track.ttStubRefs(hitPattern, setup()->layerMap(layerMap)))
   {
     get<2>(data_) = track.phiT() + phiT;
     get<3>(data_) = track.qOverPt() + qOverPt;
     get<4>(data_) = track.z0() + z0;
     get<5>(data_) = track.cot() + cot;
     get<8>(data_) = abs(qOverPt) < dataFormats_->format(Variable::qOverPt, Process::sf).base() / 2. && abs(phiT) < dataFormats_->format(Variable::phiT, Process::sf).base() / 2.;
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertTrack(data_, frame_.second, p_);
   }
 
   TTTrack<Ref_Phase2TrackerDigi_> TrackKF::ttTrack() const {
@@ -326,7 +378,7 @@ namespace trackerTFP {
     get<3>(data_) = track.qOverPt();
     get<4>(data_) = track.z0();
     get<5>(data_) = track.cot() + setup()->sectorCot(track.sectorEta());
-    dataFormats_->convert(data_, frame_.second, p_);
+    dataFormats_->convertTrack(data_, frame_.second, p_);
   }
 
   TTTrack<Ref_Phase2TrackerDigi_> TrackDR::ttTrack() const {
@@ -516,14 +568,12 @@ namespace trackerTFP {
 
   template<>
   Format<Variable::hitPattern, Process::kf>::Format(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup) : DataFormat(false) {
-    range_ = setup->numLayers();
-    width_ = ceil(log2(range_));
+    width_ = setup->numLayers();
   }
 
   template<>
   Format<Variable::layerMap, Process::kf>::Format(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup) : DataFormat(false) {
-    range_ = setup->numLayers() * ceil(log2(setup->kfMaxStubsPerLayer()));
-    width_ = ceil(log2(range_));
+    width_ = setup->numLayers() * ceil(log2(setup->kfMaxStubsPerLayer()));
   }
 
   template<>

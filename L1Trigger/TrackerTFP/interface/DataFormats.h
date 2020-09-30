@@ -97,12 +97,12 @@ namespace trackerTFP {
       {{Process::x,  Process::dtc, Process::dtc, Process::gp, Process::gp, Process::gp,  Process::sf,  Process::sf,   Process::x,  Process::x }}, // Variable::z
       {{Process::x,  Process::ht,  Process::ht,  Process::ht, Process::ht, Process::ht,  Process::ht,  Process::x,    Process::x,  Process::x }}, // Variable::layer
       {{Process::x,  Process::dtc, Process::dtc, Process::x,  Process::x,  Process::x,   Process::x,   Process::x,    Process::x,  Process::x }}, // Variable::sectorsPhi
-      {{Process::x,  Process::gp,  Process::gp,  Process::gp, Process::gp, Process::gp,  Process::gp,  Process::x,    Process::gp, Process::x }}, // Variable::sectorEta
-      {{Process::x,  Process::x,   Process::x,   Process::gp, Process::gp, Process::gp,  Process::gp,  Process::x,    Process::gp, Process::x }}, // Variable::sectorPhi
-      {{Process::x,  Process::ht,  Process::ht,  Process::ht, Process::ht, Process::mht, Process::mht, Process::x,    Process::kf, Process::x }}, // Variable::phiT
-      {{Process::x,  Process::ht,  Process::ht,  Process::ht, Process::ht, Process::mht, Process::mht, Process::x,    Process::dr, Process::dr}}, // Variable::qOverPt
-      {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::sf,  Process::x,    Process::dr, Process::dr}}, // Variable::z0
-      {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::sf,  Process::x,    Process::kf, Process::dr}}, // Variable::cot
+      {{Process::x,  Process::gp,  Process::gp,  Process::gp, Process::gp, Process::gp,  Process::gp,  Process::gp,   Process::gp, Process::x }}, // Variable::sectorEta
+      {{Process::x,  Process::x,   Process::x,   Process::gp, Process::gp, Process::gp,  Process::gp,  Process::gp,   Process::gp, Process::x }}, // Variable::sectorPhi
+      {{Process::x,  Process::ht,  Process::ht,  Process::ht, Process::ht, Process::mht, Process::mht, Process::mht,  Process::kf, Process::x }}, // Variable::phiT
+      {{Process::x,  Process::ht,  Process::ht,  Process::ht, Process::ht, Process::mht, Process::mht, Process::mht,  Process::dr, Process::dr}}, // Variable::qOverPt
+      {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::sf,  Process::sf,   Process::dr, Process::dr}}, // Variable::z0
+      {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::sf,  Process::sf,   Process::kf, Process::dr}}, // Variable::cot
       {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::x,   Process::kfin, Process::x,  Process::x }}, // Variable::trackId
       {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::x,   Process::x,    Process::kf, Process::x }}, // Variable::match
       {{Process::x,  Process::x,   Process::x,   Process::x,  Process::x,  Process::x,   Process::x,   Process::kf,   Process::kf, Process::kf}}, // Variable::hitPattern
@@ -138,13 +138,18 @@ namespace trackerTFP {
     DataFormats(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup);
     ~DataFormats(){}
     template<typename ...Ts>
-    void convert(const TTDTC::BV& bv, std::tuple<Ts...>& data, Process p) const;
+    void convertStub(const TTDTC::BV& bv, std::tuple<Ts...>& data, Process p) const;
     template<typename... Ts>
-    void convert(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const;
+    void convertStub(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const;
+    template<typename ...Ts>
+    void convertTrack(const TTDTC::BV& bv, std::tuple<Ts...>& data, Process p) const;
+    template<typename... Ts>
+    void convertTrack(const std::tuple<Ts...>& data, TTDTC::BV& bv, Process p) const;
     const trackerDTC::Setup* setup() const { return setup_; }
     int width(Variable v, Process p) const { return formats_[+v][+p]->width(); }
     double base(Variable v, Process p) const { return formats_[+v][+p]->base(); }
-    int numUnusedBits(Process p) const { return numUnusedBits_[+p]; }
+    int numUnusedBitsStubs(Process p) const { return numUnusedBitsStubs_[+p]; }
+    int numUnusedBitsTracks(Process p) const { return numUnusedBitsTracks_[+p]; }
     int numChannel(Process p) const { return numChannel_[+p]; }
     int numStreams(Process p) const { return numStreams_[+p]; }
     const DataFormat& format(Variable v, Process p) const { return *formats_[+v][+p]; }
@@ -157,14 +162,19 @@ namespace trackerTFP {
     template<Variable v, Process p, Process it = Process::begin>
     void fillFormats();
     template<int it = 0, typename ...Ts>
-    void extract(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const;
+    void extractStub(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const;
+    template<int it = 0, typename ...Ts>
+    void extractTrack(TTBV& ttBV, std::tuple<Ts...>& data, Process p) const;
     template<int it = 0, typename... Ts>
-    void attach(const std::tuple<Ts...>& data, TTBV& ttBV, Process p) const;
+    void attachStub(const std::tuple<Ts...>& data, TTBV& ttBV, Process p) const;
+    template<int it = 0, typename... Ts>
+    void attachTrack(const std::tuple<Ts...>& data, TTBV& ttBV, Process p) const;
     edm::ParameterSet iConfig_;
     const trackerDTC::Setup* setup_;
     std::vector<DataFormat> dataFormats_;
     std::vector<std::vector<DataFormat*>> formats_;
-    std::vector<int> numUnusedBits_;
+    std::vector<int> numUnusedBitsStubs_;
+    std::vector<int> numUnusedBitsTracks_;
     std::vector<int> numChannel_;
     std::vector<int> numStreams_;
   };
@@ -318,11 +328,13 @@ namespace trackerTFP {
     const FrameTrack& frame() const { return frame_; }
     const TTTrackRef& ttTrackRef() const { return frame_.first; }
     const TTDTC::BV& bv() const { return frame_.second; }
+    const std::tuple<Ts...>& data() const { return data_; }
   protected:
     int width(Variable v) const { return dataFormats_->width(v, p_); }
     double base(Variable v) const { return dataFormats_->base(v, p_); }
     const trackerDTC::Setup* setup() const { return dataFormats_->setup(); }
     const DataFormat& format(Variable v) const { return dataFormats_->format(v, p_); }
+    const DataFormat& format(Variable v, Process p) const { return dataFormats_->format(v, p); }
     const DataFormats* dataFormats_;
     Process p_;
     FrameTrack frame_;
@@ -335,7 +347,7 @@ namespace trackerTFP {
     TrackKFin(const StubSF& stub, const TTTrackRef& ttTrackRef, const TTBV& hitPattern, const TTBV& layerMap);
     ~TrackKFin(){}
     const TTBV& hitPattern() const { return std::get<0>(data_); }
-    std::vector<int> layerMap() const { return setup()->layerMap(std::get<1>(data_)); }
+    std::vector<int> layerMap() const { return setup()->layerMap(hitPattern(), std::get<1>(data_)); }
     int phiT() const { return std::get<2>(data_); }
     int qOverPt() const { return std::get<3>(data_); }
     int z0() const { return std::get<4>(data_); }
@@ -346,14 +358,16 @@ namespace trackerTFP {
     bool hitPattern(int index) const { return hitPattern()[index]; }
     std::vector<StubKFin*> layerStubs(int layer) const { return stubs_[layer]; }
     StubKFin* layerStub(int layer) const { return stubs_[layer].front(); }
+    std::vector<TTStubRef> ttStubRefs(const TTBV& hitPattern, const std::vector<int>& layerMap) const;
+    const std::vector<std::vector<StubKFin*>>& stubs() const { return stubs_; }
   private:
     std::vector<std::vector<StubKFin*>> stubs_;
   };
 
   class TrackKF : public Track<TTBV, TTBV, double, double, double, double, int, int, int> {
   public:
-    TrackKF(const FrameTrack& frame, const DataFormats* dataFormats, const std::vector<TTStubRef>& ttStubRefs);
-    TrackKF(const TrackKFin& track, double phiT, double qOverPt, double z0, double cot, const TTBV& hitPattern, const TTBV& layerMap, const std::vector<TTStubRef>& ttStubRefs);
+    TrackKF(const FrameTrack& frame, const DataFormats* dataFormats);
+    TrackKF(const TrackKFin& track, double phiT, double qOverPt, double z0, double cot, const TTBV& hitPattern, const TTBV& layerMap);
     ~TrackKF(){}
     const TTBV& hitPattern() const { return std::get<0>(data_); }
     std::vector<int> layerMap() const { return setup()->layerMap(std::get<1>(data_)); }
@@ -365,7 +379,10 @@ namespace trackerTFP {
     int sectorEta() const { return std::get<7>(data_); }
     bool match() const { return std::get<8>(data_); }
     const std::vector<TTStubRef>& ttStubRefs() const { return ttStubRefs_; }
+    void ttStubRefs(const std::vector<TTStubRef>& ttStubRefs) { ttStubRefs_ = ttStubRefs; }
     TTTrack<Ref_Phase2TrackerDigi_> ttTrack() const;
+    bool hitPattern(int layer) const { return std::get<0>(data_)[layer]; }
+    int layerMap(int layer) const { return setup()->layerMap(std::get<1>(data_))[layer]; }
   private:
     std::vector<TTStubRef> ttStubRefs_;
   };
@@ -376,7 +393,7 @@ namespace trackerTFP {
     TrackDR(const TrackKF& track);
     ~TrackDR(){}
     const TTBV& hitPattern() const { return std::get<0>(data_); }
-    std::vector<int> layerMap() const { return setup()->layerMap(std::get<1>(data_)); }
+    std::vector<int> layerMap() const { return setup()->layerMap(hitPattern(), std::get<1>(data_)); }
     int phi0() const { return std::get<2>(data_); }
     int qOverPt() const { return std::get<3>(data_); }
     int z0() const { return std::get<4>(data_); }

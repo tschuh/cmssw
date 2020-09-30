@@ -43,9 +43,9 @@ namespace trackerTFP {
     EDGetTokenT<TTDTC::Streams> edGetTokenStubs_;
     EDGetTokenT<StreamsTrack> edGetTokenTracks_;
     // ED output token for accepted tracks
-    EDPutTokenT<vector<TTTracks>> edPutTokenAccepted_;
+    EDPutTokenT<StreamsTrack> edPutTokenAccepted_;
     // ED output token for lost tracks
-    EDPutTokenT<vector<TTTracks>> edPutTokenLost_;
+    EDPutTokenT<StreamsTrack> edPutTokenLost_;
     // Setup token
     ESGetToken<Setup, SetupRcd> esGetTokenSetup_;
     // DataFormats token
@@ -71,8 +71,8 @@ namespace trackerTFP {
     // book in- and output ED products
     edGetTokenStubs_ = consumes<TTDTC::Streams>(InputTag(label, branchAccepted));
     edGetTokenTracks_ = consumes<StreamsTrack>(InputTag(label, branchAccepted));
-    edPutTokenAccepted_ = produces<vector<TTTracks>>(branchAccepted);
-    edPutTokenLost_ = produces<vector<TTTracks>>(branchLost);
+    edPutTokenAccepted_ = produces<StreamsTrack>(branchAccepted);
+    edPutTokenLost_ = produces<StreamsTrack>(branchLost);
     // book ES products
     esGetTokenSetup_ = esConsumes<Setup, SetupRcd, Transition::BeginRun>();
     esGetTokenDataFormats_ = esConsumes<DataFormats, DataFormatsRcd, Transition::BeginRun>();
@@ -99,8 +99,8 @@ namespace trackerTFP {
 
   void ProducerKF::produce(Event& iEvent, const EventSetup& iSetup) {
     // empty KF products
-    vector<TTTracks> accepted(setup_->numRegions());
-    vector<TTTracks> lost(setup_->numRegions());
+    StreamsTrack accepted(setup_->numRegions());
+    StreamsTrack lost(setup_->numRegions());
     // read in SF Product and produce KF product
     if (setup_->configurationSupported()) {
       Handle<TTDTC::Streams> handleStubs;

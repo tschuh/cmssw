@@ -12,7 +12,7 @@ namespace trackerTFP {
     track_(state->track_),
     parent_(state->parent_),
     stub_(state->stub_),
-    hitMap_(state->hitMap_),
+    layerMap_(state->layerMap_),
     hitPattern_(state->hitPattern_),
     x0_(state->x0_),
     x1_(state->x1_),
@@ -28,15 +28,15 @@ namespace trackerTFP {
     chi21_(state->chi21_)
   {}
 
-  // pre-proto state constructor
+  // proto state constructor
   State::State(const DataFormats* dataFormats, TrackKFin* track) :
     dataFormats_(dataFormats),
     setup_(dataFormats->setup()),
     track_(track),
     parent_(nullptr),
     stub_(nullptr),
-    hitMap_(setup_->numLayers(), TTBV(0, setup_->kfMaxStubsPerLayer())),
-    hitPattern_(setup_->numLayers())
+    layerMap_(setup_->numLayers()),
+    hitPattern_(0, setup_->numLayers())
   {
     // initial track parameter residuals w.r.t. found track
     x0_ = 0.;
@@ -52,15 +52,31 @@ namespace trackerTFP {
     C23_  = 0.;
     chi20_ = 0.;
     chi21_ = 0.;
+    // first stub
+    if (track->layerStubs(track->hitPattern().plEncode()).empty()) {
+      cout << endl << track->hitPattern() << " " << track->hitPattern().plEncode() << " | ";
+      for (int layer = 0; layer < setup_->numLayers(); layer++)
+        cout << track->layerStubs(layer).size() << " ";
+      cout << "| ";
+      for (int i : track->layerMap())
+        cout << i << " ";
+      cout << endl;
+      throw cms::Exception("...");
+    }
+    stub_ = track->layerStub(track->hitPattern().plEncode());
   }
 
-  // proto state constructor
-  State::State(State* state, StubKFin* stub) : State(state) {
+  // combinatoric state constructor
+  State::State(State* state, StubKFin* stub) : State(state)
+  {
+    parent_ = state->parent();
     stub_ = stub;
   }
 
   // updated state constructor
-  State::State(State* state, const std::vector<double>& doubles) : State(state) {
+  State::State(State* state, const std::vector<double>& doubles) : State(state)
+  {
+    parent_ = state;
     // updated track parameter and uncertainties
     x0_ = doubles[0];
     x1_ = doubles[1];
@@ -78,11 +94,10 @@ namespace trackerTFP {
     const int layer = stub_->layer();
     hitPattern_.set(layer);
     const vector<StubKFin*>& stubs = track_->layerStubs(layer);
-    const int nStubOnLayer = distance(stubs.begin(), find(stubs.begin(), stubs.end(), stub_));
-    hitMap_[layer].set(nStubOnLayer);
+    layerMap_[layer] = distance(stubs.begin(), find(stubs.begin(), stubs.end(), stub_));
     // pick next stub
     stub_ = nullptr;
-    if (hitPattern_.count() + 1 != setup_->kfMaxLayers()) {
+    if (hitPattern_.count() != setup_->kfMaxLayers()) {
       for (int nextLayer = layer + 1; nextLayer < 6; nextLayer++) {
         if (track_->hitPattern(nextLayer)) {
           stub_ = track_->layerStub(nextLayer);
@@ -92,31 +107,9 @@ namespace trackerTFP {
     }
   }
 
-  // picks next stub on layer, returns false if no next stub available
-  bool State::nextStubOnLayer() {
-    const int layer = stub_->layer();
-    const vector<StubKFin*>& stubs = track_->layerStubs(layer);
-    const int pos = distance(stubs.begin(), find(stubs.begin(), stubs.end(), stub_));
-    if (pos == (int)stubs.size())
-      return false;
-    stub_ = stubs[pos + 1];
-    return true;
-  }
-
-  // picks fist stub on next layer, returns fals if skipping layer is not valid
-  bool State::skipLayer() {
-    const int layer = stub_->layer();
-    // would create two skipped layer in a row
-    if ((layer > 0 && !track_->hitPattern(layer - 1)) || !track_->hitPattern(layer + 1))
-      return false;
-    // not enough inner layers remain after skipping
-    if (hitPattern_.count(0, 3) + track_->hitPattern().count(layer + 1, 3) < 2 )
-      return false;
-    // not enough layers remain after skipping
-    if (hitPattern_.count() + track_->hitPattern().count(layer + 1, 6) < setup_->kfMaxLayers())
-      return false;
-    stub_ = track_->layerStub(layer + 1);
-    return true;
+  FrameTrack State::frame() const {
+    TrackKF track(*track_, x1_, x0_, x3_, x2_, hitPattern_, setup_->layerMap(layerMap_));
+    return track.frame();
   }
 
 } // namespace trackerTFP

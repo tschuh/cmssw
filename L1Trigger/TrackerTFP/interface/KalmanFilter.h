@@ -21,7 +21,7 @@ namespace trackerTFP {
     // read in and organize input tracks
     void consume(const StreamsTrack& tracks);
     // fill output products
-    void produce(TTTracks& accepted, TTTracks& lost);
+    void produce(StreamTrack& accepted, StreamTrack& lost);
 
   private:
     // remove and return first element of deque, returns nullptr if empty

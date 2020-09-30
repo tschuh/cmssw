@@ -23,8 +23,10 @@ namespace trackerTFP {
     DataFormatKF(bool twos);
     ~DataFormatKF() {}
     void updateRangeActual(double d);
-    double digir(double val) const { return std::round(val / base_) * base_; }
-    double digif(double val) const { return (std::floor(val / base_) + .5) * base_; }
+    //double digir(double val) const { return std::round(val / base_) * base_; }
+    double digir(double val) const { return val; }
+    //double digif(double val) const { return (std::floor(val / base_) + .5) * base_; }
+    double digif(double val) const { return val; }
     bool twos() const { return twos_; }
     int width() const { return width_; }
     double base() const { return base_; }

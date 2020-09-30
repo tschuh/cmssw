@@ -93,8 +93,12 @@ namespace trackerTFP {
         copy(start, it, back_inserter(track));
       }
       for (const vector<StubMHT*>& track : tracks) {
+        /*for (StubMHT* stub : track)
+          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << setup_->dZ(stub->ttStubRef()) << endl;*/
         const int eta = track.front()->sectorEta();
-        const double dCot = (sinh(setup_->boundarieEta(eta + 1)) - sinh(setup_->boundarieEta(eta)));
+        const double dZT = (sinh(setup_->boundarieEta(eta + 1)) - sinh(setup_->boundarieEta(eta))) * setup_->chosenRofZ();
+        /*cout << dCot << endl;
+        cout << sinh(setup_->boundarieEta(eta + 1)) << " " << sinh(setup_->boundarieEta(eta)) << endl;*/
         vector<vector<StubMHT*>> layerStubs(numLayers);
         for (vector<StubMHT*>& layer : layerStubs)
           layer.reserve(track.size());
@@ -119,9 +123,12 @@ namespace trackerTFP {
           const double dz = (z2 - z1);
           const double cot = cot_.digi(dz / dr);
           const double z0 = z0_.digi(z - cot * r);
+          const double zT = z0 + cot * setup_->chosenRofZ();
+          //cout << ", " << cot << " * x + " << z0;
           if (abs(z0) > setup_->beamWindowZ())
             continue;
-          if (abs(cot) > dCot / 2.)
+          //if (abs(cot) > dCot / 2.)
+          if (abs(zT) > dZT / 2.)
             continue;
           vector<StubSF*> stubsSF;
           stubsSF.reserve(track.size());
@@ -130,6 +137,7 @@ namespace trackerTFP {
             const double sz = stub->z();
             const double chi = sz - (z0 + sr * cot);
             const double dZ = z0_.base() + cot_.base() * sr + setup_->dZ(stub->ttStubRef());
+            //cout << chi << " " << dZ << endl;
             if (abs(chi) < dZ / 2.) {
               stubsSF_.emplace_back(*stub, z0_.integer(z0), cot_.integer(cot));
               stubsSF.push_back(&stubsSF_.back());
@@ -141,6 +149,9 @@ namespace trackerTFP {
           if ((int)ids.size() >= setup_->sfMinLayers())
             seedTracks.push_back(stubsSF);
         }
+        /*cout << endl;
+        cout << cot_.base() << " " << z0_.base() << endl;
+        throw cms::Exception("...");*/
         if (seedTracks.empty())
           continue;
         stable_sort(seedTracks.begin(), seedTracks.end(), smallerChi);

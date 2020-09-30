@@ -4,8 +4,8 @@ TrackTriggerDataFormats_params = cms.PSet (
 
   SeedFilter = cms.PSet (
 
-    WidthZ0  = cms.int32( 5 ),
-    WidthCot = cms.int32( 5 )
+    WidthZ0  = cms.int32( 4 ),
+    WidthCot = cms.int32( 3 )
 
   ),
 

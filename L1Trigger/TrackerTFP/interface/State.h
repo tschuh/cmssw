@@ -14,17 +14,13 @@ namespace trackerTFP {
   public:
     //
     State(State* state);
-    // pre-proto state constructor
-    State(const DataFormats* dataFormats, TrackKFin* track);
     // proto state constructor
+    State(const DataFormats* dataFormats, TrackKFin* track);
+    // combinatoric state constructor
     State(State* state, StubKFin* stub);
     // updated state constructor
     State(State* state, const std::vector<double>& doubles);
     ~State(){}
-    // picks next stub on layer, returns false if no next stub available
-    bool nextStubOnLayer();
-    // picks fist stub on next layer, returns fals if skipping layer is not valid
-    bool skipLayer();
 
     TrackKFin* track() const { return track_; }
     State* parent() const { return parent_; }
@@ -36,9 +32,7 @@ namespace trackerTFP {
     int sectorEta() const { return track_->sectorEta(); }
     const TTBV& hitPattern() const { return hitPattern_; }
     int trackId() const { return track_->trackId(); }
-    const std::vector<TTBV>& hitMap() const { return hitMap_; }
-    double cot() const { return (x2_ - x3_) / setup_->chosenRofZ(); }
-    double phi0() const { return x1_ + x0_ * setup_->chosenRofPhi(); }
+    const std::vector<int>& layerMap() const { return layerMap_; }
     double chi2() const { return chi20_ + chi21_; }
     bool barrel() const { return setup_->barrel(stub_->ttStubRef()); }
     bool psModule() const { return setup_->psModule(stub_->ttStubRef()); }
@@ -56,12 +50,13 @@ namespace trackerTFP {
     double C33() const { return C33_; }
     double chi21() const { return chi20_; }
     double chi20() const { return chi21_; }
-    double H12() const { return (r() - setup_->chosenRofPhi()) / setup_->chosenRofZ(); }
-    double H00() const { return setup_->chosenRofPhi() - r(); }
+    double H12() const { return r() + setup_->chosenRofPhi(); }
+    double H00() const { return -r(); }
     double m0() const { return stub_->phi(); }
     double m1() const { return stub_->z(); }
-    double v0() const { return setup_->v0(stub_->ttStubRef(), dataFormats_->format(Variable::qOverPt, Process::sf).floating(track_->qOverPt())); }
+    double v0() const { return setup_->v0(stub_->ttStubRef(), track_->qOverPt()); }
     double v1() const { return setup_->v1(stub_->ttStubRef(), track_->cot()); }
+    FrameTrack frame() const;
 
   private:
     //
@@ -75,7 +70,7 @@ namespace trackerTFP {
     // stub to add
     StubKFin* stub_;
     // shows which stub on each layer has been added so far
-    std::vector<TTBV> hitMap_;
+    std::vector<int> layerMap_;
     // shows which layer has been added so far
     TTBV hitPattern_;
     double x0_;

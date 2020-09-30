@@ -543,20 +543,30 @@ namespace trackerDTC {
   //
   TTBV Setup::layerMap(const vector<int>& ints) const {
     TTBV ttBV;
-    for (int count : ints)
-      ttBV += TTBV(count - 1, kfWidthLayerCount_);
+    for (int layer = numLayers_ - 1; layer >= 0; layer--) {
+      const int i = ints[layer];
+      ttBV += TTBV((i > 0 ? i - 1 : 0), kfWidthLayerCount_);
+    }
     return ttBV;
+  }
+
+  //
+  vector<int> Setup::layerMap(const TTBV& hitPattern, const TTBV& ttBV) const {
+    TTBV bv(ttBV);
+    vector<int> ints(numLayers_, 0);
+    for (int layer = 0; layer < numLayers_; layer++) {
+      const int i = bv.extract(kfWidthLayerCount_);
+      ints[layer] = i + (hitPattern[layer] ? 1 : 0);
+    }
+    return ints;
   }
 
   //
   vector<int> Setup::layerMap(const TTBV& ttBV) const {
     TTBV bv(ttBV);
     vector<int> ints(numLayers_, 0);
-    for (int& i : ints) {
-      i = bv.extract(kfWidthLayerCount_) + 1;
-      if (i == kfMaxStubsPerLayer_)
-       i = 0;
-    }
+    for (int layer = 0; layer < numLayers_; layer++)
+      ints[layer] = bv.extract(kfWidthLayerCount_);
     return ints;
   }
 

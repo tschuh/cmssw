@@ -126,25 +126,24 @@ namespace trackerTFP {
   }
 
   // fill output products
-  void KalmanFilter::produce(TTTracks& accepted, TTTracks& lost) {
+  void KalmanFilter::produce(StreamTrack& accepted, StreamTrack& lost) {
     deque<State*> statesLost;
     deque<State*> statesAccepted;
     auto truncate = [&statesLost, this](deque<State*>& stream) {
       if (enableTruncation_ && (int)stream.size() > setup_->numFrames()) {
         const auto it = next(stream.begin(), setup_->numFrames());
-        copy(it, stream.end(), back_inserter(statesLost));
+        copy_if(it, stream.end(), back_inserter(statesLost), [](State* state){ return state; });
         stream.erase(it, stream.end());
       }
     };
-    auto put = [this](const deque<State*>& states, TTTracks& ttTracks) {
-      auto toTTTrack = [](State* state){ return TTTrack<Ref_Phase2TrackerDigi_>(); };
-      ttTracks.reserve(states.size());
-      transform(states.begin(), states.end(), back_inserter(ttTracks), toTTTrack);
+    auto put = [this](const deque<State*>& states, StreamTrack& streamTrack) {
+      auto toFrameTrack = [](State* state){ return state->frame(); };
+      streamTrack.reserve(states.size());
+      transform(states.begin(), states.end(), back_inserter(streamTrack), toFrameTrack);
     };
-    deque<State*> statesRegion;
-    vector<deque<State*>> states(dataFormats_->numChannel(Process::kf));
+    vector<deque<State*>> streams(dataFormats_->numChannel(Process::kf));
     for (int channel = 0; channel < dataFormats_->numChannel(Process::kf); channel++) {
-      deque<State*>& stream = states[channel];
+      deque<State*>& stream = streams[channel];
       for (TrackKFin* track : inputTracks_[channel]) {
         State* state = nullptr;
         if (valid(track)) {
@@ -155,15 +154,20 @@ namespace trackerTFP {
       }
       for (layer_ = 0; layer_ < setup_->numLayers(); layer_++)
         layer(stream);
-      accumulator(stream);
       truncate(stream);
+      accumulator(stream);
     }
-    for (const deque<State*>& stream : states)
-      copy(stream.begin(), stream.end(), back_inserter(statesRegion));
-    truncate(statesRegion);
-    copy(statesRegion.begin(), statesRegion.end(), back_inserter(statesAccepted));
+    for (const deque<State*>& stream : streams)
+      copy(stream.begin(), stream.end(), back_inserter(statesAccepted));
+    truncate(statesAccepted);
     put(statesAccepted, accepted);
+    accumulator(statesLost);
+    auto recovered = [statesAccepted](State* state) {
+      return find_if(statesAccepted.begin(), statesAccepted.end(), [state](State* it){ return it->track() == state->track(); }) != statesAccepted.end();
+    };
+    statesLost.erase(remove_if(statesLost.begin(), statesLost.end(), recovered), statesLost.end());
     put(statesLost, lost);
+    cout << endl;
   }
 
   // hit pattern check
@@ -207,7 +211,7 @@ namespace trackerTFP {
         stack.push_back(state);
     }
     stream = streamOutput;
-    for (State* state : stream) {
+    for (State*& state : stream) {
       if (!state || !state->stub() || state->layer() != layer_ )
         continue;
       update(state);
@@ -216,15 +220,38 @@ namespace trackerTFP {
 
   // repicks combinatoric stubs for state
   void KalmanFilter::comb(State*& state) {
-    if (!state->nextStubOnLayer() && !state->skipLayer())
-      state = nullptr;
+    // picks next stub on layer
+    StubKFin* stub = state->stub();
+    const int layer = stub->layer();
+    TrackKFin* track = state->track();
+    const vector<StubKFin*>& stubs = track->layerStubs(layer);
+    const TTBV& hitPattern = state->hitPattern();
+    const int pos = distance(stubs.begin(), find(stubs.begin(), stubs.end(), stub)) + 1;
+    if (pos != (int)stubs.size()) {
+      states_.emplace_back(state, stubs[pos]);
+      state = &states_.back();
+    } else {
+      // picks first stub on next layer, nullifies state if skipping layer is not valid
+      bool valid(true);
+      // would create two skipped layer in a row
+      if ((layer > 0 && !track->hitPattern(layer - 1)) || !track->hitPattern(layer + 1))
+        valid = false;
+      // not enough inner layers remain after skipping
+      if (hitPattern.count(0, 3) + track->hitPattern().count(layer + 1, 3) < 2 )
+        valid = false;
+      // not enough layers remain after skipping
+      if (hitPattern.count() + track->hitPattern().count(layer + 1, 6) < setup_->kfMaxLayers())
+        valid = false;
+      if (valid) {
+        states_.emplace_back(state, track->layerStub(layer + 1));
+        state = &states_.back();
+      } else
+        state = nullptr;
+    }
   }
 
   // best state selection
   void KalmanFilter::accumulator(deque<State*>& stream) {
-    // perform truncation 
-    if (enableTruncation_ && (int)stream.size() > setup_->numFrames())
-      stream.resize(setup_->numFrames());
     // accumulator delivers contigious stream of best state per track
     // remove gaps and not final states
     stream.erase(remove_if(stream.begin(), stream.end(), [](State* state){ return !state || state->hitPattern().count() < 4; }), stream.end());
@@ -251,6 +278,15 @@ namespace trackerTFP {
     double C23 = C23_.digif(state->C23());
     double C33 = C33_.digif(state->C33());
     double chi21 = chi21_.digif(state->chi21());
+    /*cout << "H12 " << H12 << endl;
+    cout << "m1 " << m1 << endl;
+    cout << "v1 " << v1 << endl;
+    cout << "x2 " << x2 << endl;
+    cout << "x3 " << x3 << endl;
+    cout << "C22 " << C22 << endl;
+    cout << "C23 " << C23 << endl;
+    cout << "C33 " << C33 << endl;
+    cout << "chi21 " << chi21 << endl;*/
     v1_.updateRangeActual(v1);
     C22_.updateRangeActual(C22);
     C23_.updateRangeActual(C23);
@@ -264,6 +300,10 @@ namespace trackerTFP {
     const double S13 = S13_.digif(C33 + H12 * C23);
     const double R11C = S13_.digif(v1 + S13);
     double R11 = R11_.digif(R11C + H12 * S12);
+    /*cout << "r1 " << r1 << endl;
+    cout << "S12 " << S12 << endl;
+    cout << "S13 " << S13 << endl;
+    cout << "R11 " << R11 << endl;*/
     if (R11 < 0.)
       throw cms::Exception("NumericInstabillity") << "R11 got negative.";
     // dynamic cancelling
@@ -281,15 +321,43 @@ namespace trackerTFP {
     C23 = C23_.digif(C23 - S13 * K21);
     C33 = C33_.digif(C33 - S13 * K31);
     chi21 = chi21_.digif(chi21 + r12 * invR11);
-    if (C22 < 0.)
+    if (C22 < 0.) {
+      for (const vector<StubKFin*>& stubs : state->track()->stubs())
+        for (StubKFin* stub : stubs)
+          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << setup_->dZ(stub->ttStubRef()) << endl;
+      State* s(state);
+      cout << C22 << " " << C33 << " " << C23 << " " << x2 << " " << x3 << endl;
+      while(s) {
+        cout << s->C22() << " " << s->C33() << " " << s->C23() << " " << s->x2() << " " << s->x3() << endl;
+        StubKFin* stub = s->stub();
+        if (stub)
+          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << stub->layer() << endl;
+        //cout << ", " << s->x2() << " * x + " << s->x3();
+        s = s->parent();
+      }
+      cout << ", " << x2 << " * x + " << x3;
+      /*while(state) {
+        state = state->parent();
+        cout << ", " << state->x2() << " * x + " << state->x3();
+      }*/
+      cout << endl;
       throw cms::Exception("NumericInstabillity") << "C22 got negative.";
+    }
     if (C33 < 0.)
       throw cms::Exception("NumericInstabillity") << "C33 got negative.";
+    /*cout << "K21 " << K21 << " " << shiftedS12 * invR11 << endl;
+    cout << "K31 " << K31 << " " << shiftedS13 * invR11 << endl;
+    cout << "x2 " << x2 << endl;
+    cout << "x3 " << x3 << endl;
+    cout << "C22 " << C22 << endl;
+    cout << "C23 " << C23 << endl;
+    cout << "C33 " << C33 << endl;
+    cout << "chi21 " << chi21 << endl;*/
     // loose slope cut
-    if (fabs(x2) > 4. * dataFormats_->base(Variable::cot, Process::sf))
+    if (fabs(x2) > dataFormats_->base(Variable::cot, Process::sf))
       valid1 = false;
     // loose intercept cut
-    if (fabs(x3) > 4. * dataFormats_->base(Variable::z0, Process::sf))
+    if (fabs(x3) > dataFormats_->base(Variable::z0, Process::sf))
       valid1 = false;
     S12_.updateRangeActual(S12);
     S13_.updateRangeActual(S13);
@@ -318,6 +386,15 @@ namespace trackerTFP {
     double C01 = C01_.digif(state->C01());
     double C11 = C11_.digif(state->C11());
     double chi20 = chi20_.digif(state->chi20());
+    /*cout << "H00 " << H00 << endl;
+    cout << "m0 " << m0 << endl;
+    cout << "v0 " << v0 << endl;
+    cout << "x0 " << x0 << endl;
+    cout << "x1 " << x1 << endl;
+    cout << "C00 " << C00 << endl;
+    cout << "C01 " << C01 << endl;
+    cout << "C11 " << C11 << endl;
+    cout << "chi20 " << chi20 << endl;*/
     v0_.updateRangeActual(v0);
     C00_.updateRangeActual(C00);
     C01_.updateRangeActual(C01);
@@ -331,6 +408,10 @@ namespace trackerTFP {
     const double S01 = S01_.digif(C11  + H00 * C01);
     const double R00C = S01_.digif(v0 + S01);
     const double R00 = R00_.digif(R00C + H00 * S00);
+    /*cout << "r0 " << r0 << endl;
+    cout << "S00 " << S00 << endl;
+    cout << "S01 " << S01 << endl;
+    cout << "R00 " << R00 << endl;*/
     if (R00 < 0.)
       throw cms::Exception("NumericInstabillity") << "R00 got negative.";
     // dynamic cancelling
@@ -352,6 +433,14 @@ namespace trackerTFP {
       throw cms::Exception("NumericInstabillity") << "C00 got negative.";
     if (C11 < 0.)
       throw cms::Exception("NumericInstabillity") << "C11 got negative.";
+    /*cout << "K00 " << K00 << " " << shiftedS00 * invR00 << endl;
+    cout << "K10 " << K10 << " " << shiftedS01 * invR00 << endl;
+    cout << "x0 " << x0 << endl;
+    cout << "x1 " << x1 << endl;
+    cout << "C00 " << C00 << endl;
+    cout << "C01 " << C01 << endl;
+    cout << "C11 " << C11 << endl;
+    cout << "chi20 " << chi20 << endl;*/
     // loose slope cut
     if (fabs(x0) > dataFormats_->base(Variable::qOverPt, Process::mht))
       valid0 = false;

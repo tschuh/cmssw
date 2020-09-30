@@ -171,7 +171,6 @@ namespace trackerTFP {
             stubs.emplace_back(stubKFin.frame());
           }
           const TTBV& layerMap = setup_->layerMap(layerCounts);
-          // TTTrackRef to bitvector missing
           TrackKFin track(*stubSF, TTTrackRef(handleTTTracks, i++), hitPattern, layerMap);
           tracks.emplace_back(track.frame());
         }

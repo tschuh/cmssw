@@ -100,6 +100,8 @@ namespace trackerDTC {
     //
     TTBV layerMap(const std::vector<int>& ints) const;
     //
+    std::vector<int> layerMap(const TTBV& hitPattern, const TTBV& ttBV) const;
+    //
     std::vector<int> layerMap(const TTBV& ttBV) const;
     //
     double dZ(const TTStubRef& ttStubRef) const;
