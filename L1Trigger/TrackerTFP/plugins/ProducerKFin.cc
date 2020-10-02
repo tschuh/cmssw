@@ -112,7 +112,7 @@ namespace trackerTFP {
 
   void ProducerKFin::produce(Event& iEvent, const EventSetup& iSetup) {
     const DataFormat& dfCot = dataFormats_->format(Variable::cot, Process::sf);
-    const DataFormat& dfZ0 = dataFormats_->format(Variable::z0, Process::sf);
+    const DataFormat& dfZT = dataFormats_->format(Variable::zT, Process::sf);
     // empty KFin products
     TTDTC::Streams streamAcceptedStubs(dataFormats_->numStreams(Process::kf) * setup_->numLayers());
     StreamsTrack streamAcceptedTracks(dataFormats_->numStreams(Process::kf));
@@ -152,14 +152,14 @@ namespace trackerTFP {
           const int sectorPhi = ttTrack.phiSector() % setup_->numSectorsPhi();
           deque<FrameTrack>& tracks = dequesTracks[sectorPhi];
           const int binEta = ttTrack.etaSector();
-          const int binZ0 = dfZ0.toUnsigned(dfZ0.integer(ttTrack.z0()));
+          const int binZT = dfZT.toUnsigned(dfZT.integer(ttTrack.z0()));
           const int binCot = dfCot.toUnsigned(dfCot.integer(ttTrack.tanL()));
           StubSF* stubSF = nullptr;
           TTBV hitPattern(0, setup_->numLayers());
           vector<int> layerCounts(setup_->numLayers(), 0);
           for (const TTStubRef& ttStubRef : ttTrack.getStubRefs()) {
             const int layerId = setup_->layerId(ttStubRef);
-            const int layerIdKF = layerEncoding_->layerIdKF(binEta, binZ0, binCot, layerId);
+            const int layerIdKF = layerEncoding_->layerIdKF(binEta, binZT, binCot, layerId);
             hitPattern.set(layerIdKF);
             layerCounts[layerIdKF]++;
             deque<TTDTC::Frame>& stubs = dequesStubs[sectorPhi * setup_->numLayers() + layerIdKF];

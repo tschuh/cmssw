@@ -84,7 +84,7 @@ namespace trackerTFP {
 
   void ProducerSFout::produce(Event& iEvent, const EventSetup& iSetup) {
     const DataFormat& dfCot = dataFormats_->format(Variable::cot, Process::sf);
-    const DataFormat& dfZ0 = dataFormats_->format(Variable::z0, Process::sf);
+    const DataFormat& dfZT = dataFormats_->format(Variable::zT, Process::sf);
     const DataFormat& dfPhiT = dataFormats_->format(Variable::phiT, Process::sf);
     const DataFormat& dfQoverPt = dataFormats_->format(Variable::qOverPt, Process::sf);
     // empty SFout product
@@ -114,12 +114,12 @@ namespace trackerTFP {
             vector<TTStubRef> ttStubRefs;
             ttStubRefs.reserve(distance(start, it));
             transform(start, it, back_inserter(ttStubRefs), [](const StubSF& stub){ return stub.ttStubRef(); });
-            const double z0 = dfZ0.floating(start->z0());
+            const double zT = dfZT.floating(start->zT());
             const double cot = dfCot.floating(start->cot());
             const double phiT = dfPhiT.floating(start->phiT());
             const double qOverPt = dfQoverPt.floating(start->qOverPt());
             const int trackId = channel * setup_->sfMaxTracks() + i;
-            ttTracks.emplace_back(qOverPt, phiT, cot, z0, 0., 0., 0., 0., 0., trackId, 0, 0.);
+            ttTracks.emplace_back(qOverPt, phiT, cot, zT, 0., 0., 0., 0., 0., trackId, 0, 0.);
             ttTracks.back().setStubRefs(ttStubRefs);
             ttTracks.back().setPhiSector(start->sectorPhi() + region * setup_->numSectorsPhi());
             ttTracks.back().setEtaSector(start->sectorEta());

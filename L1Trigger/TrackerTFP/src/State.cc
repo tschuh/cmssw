@@ -47,22 +47,12 @@ namespace trackerTFP {
     C00_  = pow(dataFormats_->base(Variable::qOverPt, Process::sf), 2);
     C11_  = pow(dataFormats_->base(Variable::phiT, Process::sf), 2);
     C22_  = pow(dataFormats_->base(Variable::cot, Process::sf), 2);
-    C33_  = pow(dataFormats_->base(Variable::z0, Process::sf), 2);
+    C33_  = pow(dataFormats_->base(Variable::zT, Process::sf), 2);
     C01_  = 0.;
     C23_  = 0.;
     chi20_ = 0.;
     chi21_ = 0.;
     // first stub
-    if (track->layerStubs(track->hitPattern().plEncode()).empty()) {
-      cout << endl << track->hitPattern() << " " << track->hitPattern().plEncode() << " | ";
-      for (int layer = 0; layer < setup_->numLayers(); layer++)
-        cout << track->layerStubs(layer).size() << " ";
-      cout << "| ";
-      for (int i : track->layerMap())
-        cout << i << " ";
-      cout << endl;
-      throw cms::Exception("...");
-    }
     stub_ = track->layerStub(track->hitPattern().plEncode());
   }
 

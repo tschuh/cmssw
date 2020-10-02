@@ -167,7 +167,6 @@ namespace trackerTFP {
     };
     statesLost.erase(remove_if(statesLost.begin(), statesLost.end(), recovered), statesLost.end());
     put(statesLost, lost);
-    cout << endl;
   }
 
   // hit pattern check
@@ -278,15 +277,6 @@ namespace trackerTFP {
     double C23 = C23_.digif(state->C23());
     double C33 = C33_.digif(state->C33());
     double chi21 = chi21_.digif(state->chi21());
-    /*cout << "H12 " << H12 << endl;
-    cout << "m1 " << m1 << endl;
-    cout << "v1 " << v1 << endl;
-    cout << "x2 " << x2 << endl;
-    cout << "x3 " << x3 << endl;
-    cout << "C22 " << C22 << endl;
-    cout << "C23 " << C23 << endl;
-    cout << "C33 " << C33 << endl;
-    cout << "chi21 " << chi21 << endl;*/
     v1_.updateRangeActual(v1);
     C22_.updateRangeActual(C22);
     C23_.updateRangeActual(C23);
@@ -299,11 +289,7 @@ namespace trackerTFP {
     const double S12 = S12_.digif(C23 + H12 * C22);
     const double S13 = S13_.digif(C33 + H12 * C23);
     const double R11C = S13_.digif(v1 + S13);
-    double R11 = R11_.digif(R11C + H12 * S12);
-    /*cout << "r1 " << r1 << endl;
-    cout << "S12 " << S12 << endl;
-    cout << "S13 " << S13 << endl;
-    cout << "R11 " << R11 << endl;*/
+    const double R11 = R11_.digif(R11C + H12 * S12);
     if (R11 < 0.)
       throw cms::Exception("NumericInstabillity") << "R11 got negative.";
     // dynamic cancelling
@@ -321,43 +307,15 @@ namespace trackerTFP {
     C23 = C23_.digif(C23 - S13 * K21);
     C33 = C33_.digif(C33 - S13 * K31);
     chi21 = chi21_.digif(chi21 + r12 * invR11);
-    if (C22 < 0.) {
-      for (const vector<StubKFin*>& stubs : state->track()->stubs())
-        for (StubKFin* stub : stubs)
-          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << setup_->dZ(stub->ttStubRef()) << endl;
-      State* s(state);
-      cout << C22 << " " << C33 << " " << C23 << " " << x2 << " " << x3 << endl;
-      while(s) {
-        cout << s->C22() << " " << s->C33() << " " << s->C23() << " " << s->x2() << " " << s->x3() << endl;
-        StubKFin* stub = s->stub();
-        if (stub)
-          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << stub->layer() << endl;
-        //cout << ", " << s->x2() << " * x + " << s->x3();
-        s = s->parent();
-      }
-      cout << ", " << x2 << " * x + " << x3;
-      /*while(state) {
-        state = state->parent();
-        cout << ", " << state->x2() << " * x + " << state->x3();
-      }*/
-      cout << endl;
+    if (C22 < 0.)
       throw cms::Exception("NumericInstabillity") << "C22 got negative.";
-    }
     if (C33 < 0.)
       throw cms::Exception("NumericInstabillity") << "C33 got negative.";
-    /*cout << "K21 " << K21 << " " << shiftedS12 * invR11 << endl;
-    cout << "K31 " << K31 << " " << shiftedS13 * invR11 << endl;
-    cout << "x2 " << x2 << endl;
-    cout << "x3 " << x3 << endl;
-    cout << "C22 " << C22 << endl;
-    cout << "C23 " << C23 << endl;
-    cout << "C33 " << C33 << endl;
-    cout << "chi21 " << chi21 << endl;*/
     // loose slope cut
     if (fabs(x2) > dataFormats_->base(Variable::cot, Process::sf))
       valid1 = false;
     // loose intercept cut
-    if (fabs(x3) > dataFormats_->base(Variable::z0, Process::sf))
+    if (fabs(x3) > dataFormats_->base(Variable::zT, Process::sf))
       valid1 = false;
     S12_.updateRangeActual(S12);
     S13_.updateRangeActual(S13);
@@ -386,15 +344,6 @@ namespace trackerTFP {
     double C01 = C01_.digif(state->C01());
     double C11 = C11_.digif(state->C11());
     double chi20 = chi20_.digif(state->chi20());
-    /*cout << "H00 " << H00 << endl;
-    cout << "m0 " << m0 << endl;
-    cout << "v0 " << v0 << endl;
-    cout << "x0 " << x0 << endl;
-    cout << "x1 " << x1 << endl;
-    cout << "C00 " << C00 << endl;
-    cout << "C01 " << C01 << endl;
-    cout << "C11 " << C11 << endl;
-    cout << "chi20 " << chi20 << endl;*/
     v0_.updateRangeActual(v0);
     C00_.updateRangeActual(C00);
     C01_.updateRangeActual(C01);
@@ -408,10 +357,6 @@ namespace trackerTFP {
     const double S01 = S01_.digif(C11  + H00 * C01);
     const double R00C = S01_.digif(v0 + S01);
     const double R00 = R00_.digif(R00C + H00 * S00);
-    /*cout << "r0 " << r0 << endl;
-    cout << "S00 " << S00 << endl;
-    cout << "S01 " << S01 << endl;
-    cout << "R00 " << R00 << endl;*/
     if (R00 < 0.)
       throw cms::Exception("NumericInstabillity") << "R00 got negative.";
     // dynamic cancelling
@@ -433,14 +378,6 @@ namespace trackerTFP {
       throw cms::Exception("NumericInstabillity") << "C00 got negative.";
     if (C11 < 0.)
       throw cms::Exception("NumericInstabillity") << "C11 got negative.";
-    /*cout << "K00 " << K00 << " " << shiftedS00 * invR00 << endl;
-    cout << "K10 " << K10 << " " << shiftedS01 * invR00 << endl;
-    cout << "x0 " << x0 << endl;
-    cout << "x1 " << x1 << endl;
-    cout << "C00 " << C00 << endl;
-    cout << "C01 " << C01 << endl;
-    cout << "C11 " << C11 << endl;
-    cout << "chi20 " << chi20 << endl;*/
     // loose slope cut
     if (fabs(x0) > dataFormats_->base(Variable::qOverPt, Process::mht))
       valid0 = false;

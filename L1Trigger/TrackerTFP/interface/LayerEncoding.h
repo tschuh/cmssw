@@ -14,17 +14,17 @@ namespace trackerTFP {
     LayerEncoding() {}
     LayerEncoding(const DataFormats* dataFormats);
     ~LayerEncoding(){}
-    const std::vector<int>& layerEncoding(int binEta, int binZ0, int binCot) const { return layerEncoding_.at(binEta).at(binZ0).at(binCot); }
-    const std::vector<int>& maybeLayer(int binEta, int binZ0, int binCot) const { return maybeLayer_.at(binEta).at(binZ0).at(binCot); }
-    const int layerIdKF(int binEta, int binZ0, int binCot, int layerId) const;
+    const std::vector<int>& layerEncoding(int binEta, int binZT, int binCot) const { return layerEncoding_.at(binEta).at(binZT).at(binCot); }
+    const std::vector<int>& maybeLayer(int binEta, int binZT, int binCot) const { return maybeLayer_.at(binEta).at(binZT).at(binCot); }
+    const int layerIdKF(int binEta, int binZT, int binCot, int layerId) const;
     //
-    TTBV hitPattern(const std::vector<TTStubRef>& ttStubRefs, int binEta, int binZ0, int binCot) const;
+    TTBV hitPattern(const std::vector<TTStubRef>& ttStubRefs, int binEta, int binZT, int binCot) const;
     //
     void addTTStubRefs(TrackKF& track) const;
   private:
     const DataFormats* dataFormats_;
     const trackerDTC::Setup* setup_;
-    const DataFormat* z0_;
+    const DataFormat* zT_;
     const DataFormat* cot_;
     std::vector<std::vector<std::vector<std::vector<int>>>> layerEncoding_;
     std::vector<std::vector<std::vector<std::vector<int>>>> maybeLayer_;

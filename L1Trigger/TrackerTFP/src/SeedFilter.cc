@@ -21,7 +21,7 @@ namespace trackerTFP {
     dataFormats_(dataFormats),
     region_(region),
     cot_(dataFormats_->format(Variable::cot, Process::sf)),
-    z0_(dataFormats_->format(Variable::z0, Process::sf)),
+    zT_(dataFormats_->format(Variable::zT, Process::sf)),
     z_(dataFormats_->format(Variable::z, Process::sf)),
     input_(dataFormats_->numChannel(Process::mht)) {}
 
@@ -69,8 +69,7 @@ namespace trackerTFP {
     };
     const int numLayers = 16;
     static const vector<pair<int, int>> seedingLayers = {{1, 2}, {1, 3}, {2, 3}, {1, 11}, {2, 11}, {1, 12}, {2, 12}, {11, 12}};
-    //const double dT = setup_->chosenRofPhi() - setup_->chosenRofZ();
-    const double dT = setup_->chosenRofPhi();
+    const double dT = setup_->chosenRofPhi() - setup_->chosenRofZ();
     for (int channel = 0; channel < dataFormats_->numChannel(Process::mht); channel++) {
       TTDTC::Stream& acceptedStream = accepted[region_ * dataFormats_->numChannel(Process::mht) + channel];
       TTDTC::Stream& lostStream = lost[region_ * dataFormats_->numChannel(Process::mht) + channel];
@@ -93,12 +92,8 @@ namespace trackerTFP {
         copy(start, it, back_inserter(track));
       }
       for (const vector<StubMHT*>& track : tracks) {
-        /*for (StubMHT* stub : track)
-          cout << stub->r() + setup_->chosenRofPhi() << " " << stub->z() << " " << setup_->dZ(stub->ttStubRef()) << endl;*/
         const int eta = track.front()->sectorEta();
         const double dZT = (sinh(setup_->boundarieEta(eta + 1)) - sinh(setup_->boundarieEta(eta))) * setup_->chosenRofZ();
-        /*cout << dCot << endl;
-        cout << sinh(setup_->boundarieEta(eta + 1)) << " " << sinh(setup_->boundarieEta(eta)) << endl;*/
         vector<vector<StubMHT*>> layerStubs(numLayers);
         for (vector<StubMHT*>& layer : layerStubs)
           layer.reserve(track.size());
@@ -122,12 +117,12 @@ namespace trackerTFP {
           const double dr = (r2 - r1);
           const double dz = (z2 - z1);
           const double cot = cot_.digi(dz / dr);
-          const double z0 = z0_.digi(z - cot * r);
-          const double zT = z0 + cot * setup_->chosenRofZ();
-          //cout << ", " << cot << " * x + " << z0;
+          const double zT = zT_.digi(z - cot * r);
+          const double z0 = zT - cot * setup_->chosenRofZ();
+          //if (abs(z0) > setup_->beamWindowZ() + cot_.base() * setup_->chosenRofZ())
           if (abs(z0) > setup_->beamWindowZ())
             continue;
-          //if (abs(cot) > dCot / 2.)
+          //if (abs(zT) > dZT / 2. + zT_.base() / 2.)
           if (abs(zT) > dZT / 2.)
             continue;
           vector<StubSF*> stubsSF;
@@ -135,11 +130,10 @@ namespace trackerTFP {
           for (StubMHT* stub : track) {
             const double sr = stub->r() + dT;
             const double sz = stub->z();
-            const double chi = sz - (z0 + sr * cot);
-            const double dZ = z0_.base() + cot_.base() * sr + setup_->dZ(stub->ttStubRef());
-            //cout << chi << " " << dZ << endl;
+            const double chi = sz - (zT + sr * cot);
+            const double dZ = zT_.base() + cot_.base() * abs(sr) + setup_->dZ(stub->ttStubRef());
             if (abs(chi) < dZ / 2.) {
-              stubsSF_.emplace_back(*stub, z0_.integer(z0), cot_.integer(cot));
+              stubsSF_.emplace_back(*stub, zT_.integer(zT), cot_.integer(cot));
               stubsSF.push_back(&stubsSF_.back());
             }
           }
@@ -149,9 +143,6 @@ namespace trackerTFP {
           if ((int)ids.size() >= setup_->sfMinLayers())
             seedTracks.push_back(stubsSF);
         }
-        /*cout << endl;
-        cout << cot_.base() << " " << z0_.base() << endl;
-        throw cms::Exception("...");*/
         if (seedTracks.empty())
           continue;
         stable_sort(seedTracks.begin(), seedTracks.end(), smallerChi);

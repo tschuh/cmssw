@@ -38,7 +38,7 @@ namespace trackerTFP {
     //
     DataFormat cot_;
     //
-    DataFormat z0_;
+    DataFormat zT_;
     //
     DataFormat z_;
     // 

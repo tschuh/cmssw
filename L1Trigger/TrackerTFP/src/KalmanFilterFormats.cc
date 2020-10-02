@@ -51,46 +51,34 @@ namespace trackerTFP {
 
   template<>
   FormatKF<VariableKF::x0>::FormatKF(const DataFormats* dataFormats, const edm::ParameterSet& iConfig) : DataFormatKF(true) {
-    const DataFormat& input = dataFormats->format(Variable::qOverPt, Process::sf);
-    width_ = iConfig.getParameter<int>("WidthQoverPt");
-    const int shift = input.width() - width_;
-    base_ = input.base() * pow(2., shift);
+    const DataFormat& input = dataFormats->format(Variable::qOverPt, Process::kf);
+    width_ = input.width();
+    base_ = input.base();
     range_ = input.range();
   }
 
   template<>
   FormatKF<VariableKF::x1>::FormatKF(const DataFormats* dataFormats, const edm::ParameterSet& iConfig) : DataFormatKF(true) {
-    const Setup* setup = dataFormats->setup();
-    const DataFormat& input = dataFormats->format(Variable::phiT, Process::sf);
-    const DataFormat& r = dataFormats->format(Variable::r, Process::sf);
-    const DataFormat& qOverPt = dataFormats->format(Variable::qOverPt, Process::sf);
-    const int widthPhi0 = iConfig.getParameter<int>("WidthPhi0");
-    const double rangePhi0 = 2. * M_PI / (double)(setup->numRegions()) + qOverPt.range() / r.range() / 2.;
-    const int shift = ceil(log2(rangePhi0 / input.base() * pow( 2, -widthPhi0)));
-    base_ = input.base() * pow(2., shift);
-    width_ = ceil(log2(input.range() / base_));
+    const DataFormat& input = dataFormats->format(Variable::phiT, Process::kf);
+    width_ = input.width();
+    base_ = input.base();
+    range_ = input.range();
   }
 
   template<>
   FormatKF<VariableKF::x2>::FormatKF(const DataFormats* dataFormats, const edm::ParameterSet& iConfig) : DataFormatKF(true) {
-    const Setup* setup = dataFormats->setup();
-    const int cotWidth = iConfig.getParameter<int>("WidthCot");
-    const double cotRange = 2. * sinh(setup->maxEta());
-    const int cotShift = ceil(log2(cotRange)) - cotWidth;
-    base_ = pow(2., cotShift);
-    for (int eta = 0; eta < setup->numSectorsEta(); eta++)
-      range_ = max(range_, (sinh(setup->boundarieEta(eta + 1)) - sinh(setup->boundarieEta(eta))));
-    width_ = ceil(log2(range_ / base_));
+    const DataFormat& input = dataFormats->format(Variable::cot, Process::kf);
+    width_ = input.width();
+    base_ = input.base();
+    range_ = input.range();
   }
 
   template<>
   FormatKF<VariableKF::x3>::FormatKF(const DataFormats* dataFormats, const edm::ParameterSet& iConfig) : DataFormatKF(true) {
-    const Setup* setup = dataFormats->setup();
-    const DataFormat& z = dataFormats->format(Variable::z, Process::sf);
-    width_ = iConfig.getParameter<int>("WidthZ0");
-    range_ = 2. * setup->beamWindowZ();
-    const int shift = ceil(log2(range_ / z.base() * pow(2., -width_)));
-    base_ = z.base() * pow(2., shift);
+    const DataFormat& input = dataFormats->format(Variable::zT, Process::kf);
+    width_ = input.width();
+    base_ = input.base();
+    range_ = input.range();
   }
 
   template<>

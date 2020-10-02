@@ -50,7 +50,7 @@ namespace trackerTFP {
     double C33() const { return C33_; }
     double chi21() const { return chi20_; }
     double chi20() const { return chi21_; }
-    double H12() const { return r() + setup_->chosenRofPhi(); }
+    double H12() const { return r() + setup_->chosenRofPhi() - setup_->chosenRofZ(); }
     double H00() const { return -r(); }
     double m0() const { return stub_->phi(); }
     double m1() const { return stub_->z(); }
