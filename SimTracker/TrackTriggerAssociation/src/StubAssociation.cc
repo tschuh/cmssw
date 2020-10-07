@@ -14,14 +14,6 @@ namespace tt {
       mapTTStubRefsTPPtrs_[ttSTubRef].push_back(tpPtr);
   }
 
-  const map<TTStubRef, vector<TPPtr>>& StubAssociation::getTTStubToTrackingParticlesMap() const {
-    return mapTTStubRefsTPPtrs_;
-  }
-
-  const map<TPPtr, vector<TTStubRef>>& StubAssociation::getTrackingParticleToTTStubsMap() const {
-    return mapTPPtrsTTStubRefs_;
-  }
-
   const vector<TPPtr>& StubAssociation::findTrackingParticlePtrs(const TTStubRef& ttStubRef) const {
     const auto it = mapTTStubRefsTPPtrs_.find(ttStubRef);
     return it != mapTTStubRefsTPPtrs_.end() ? it->second : nullTPPtrs_;

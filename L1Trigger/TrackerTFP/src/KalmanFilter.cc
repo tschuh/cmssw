@@ -146,7 +146,7 @@ namespace trackerTFP {
       deque<State*>& stream = streams[channel];
       for (TrackKFin* track : inputTracks_[channel]) {
         State* state = nullptr;
-        if (valid(track)) {
+        if (track) {
           states_.emplace_back(dataFormats_, track);
           state = &states_.back();
         }
@@ -233,16 +233,25 @@ namespace trackerTFP {
       // picks first stub on next layer, nullifies state if skipping layer is not valid
       bool valid(true);
       // would create two skipped layer in a row
-      if ((layer > 0 && !track->hitPattern(layer - 1)) || !track->hitPattern(layer + 1))
-        valid = false;
+      /*if ((layer > 0 && !track->hitPattern(layer - 1)) || !track->hitPattern(layer + 1))
+        valid = false;*/
       // not enough inner layers remain after skipping
-      if (hitPattern.count(0, 3) + track->hitPattern().count(layer + 1, 3) < 2 )
-        valid = false;
+      /*if (hitPattern.count(0, 3) + track->hitPattern().count(layer + 1, 3) < 2 )
+        valid = false;*/
       // not enough layers remain after skipping
-      if (hitPattern.count() + track->hitPattern().count(layer + 1, 6) < setup_->kfMaxLayers())
-        valid = false;
+      /*if (hitPattern.count() + track->hitPattern().count(layer + 1, setup_->numLayers()) < setup_->kfMaxLayers())
+        valid = false;*/
       if (valid) {
-        states_.emplace_back(state, track->layerStub(layer + 1));
+        StubKFin* stub = nullptr;
+        if (hitPattern.count() != setup_->kfMaxLayers()) {
+          for (int nextLayer = layer_ + 1; nextLayer < setup_->numLayers(); nextLayer++) {
+            if (track->hitPattern(nextLayer)) {
+              stub = track->layerStub(nextLayer);
+              break;
+            }
+          }
+        }
+        states_.emplace_back(state, stub);
         state = &states_.back();
       } else
         state = nullptr;
@@ -265,9 +274,10 @@ namespace trackerTFP {
   // updates state
   void KalmanFilter::update(State*& state) {
     static const vector<double> chi2Cuts = {9.9e9, 10., 30., 80., 120., 160.};
-    const double chi2Cut = chi2Cuts[state->hitPattern().count()];
+    const double chi2Cut = chi2Cuts[state->hitPattern().count()] + 9.e9;
     // R-Z plane
-    bool valid1(true);
+    bool valid2(true);
+    bool valid3(true);
     const double H12 = H12_.digif(state->H12());
     const double m1 = m1_.digif(state->m1());
     const double v1 = v1_.digif(state->v1());
@@ -312,11 +322,11 @@ namespace trackerTFP {
     if (C33 < 0.)
       throw cms::Exception("NumericInstabillity") << "C33 got negative.";
     // loose slope cut
-    if (fabs(x2) > dataFormats_->base(Variable::cot, Process::sf))
-      valid1 = false;
+    /*if (fabs(x2) > dataFormats_->base(Variable::cot, Process::sf))
+      valid2 = false;*/
     // loose intercept cut
-    if (fabs(x3) > dataFormats_->base(Variable::zT, Process::sf))
-      valid1 = false;
+    /*if (fabs(x3) > dataFormats_->base(Variable::zT, Process::sf))
+      valid3 = false;*/
     S12_.updateRangeActual(S12);
     S13_.updateRangeActual(S13);
     K21_.updateRangeActual(K21);
@@ -325,7 +335,7 @@ namespace trackerTFP {
     invR11_.updateRangeActual(invR11);
     r1_.updateRangeActual(r1);
     r12_.updateRangeActual(r12);
-    if (valid1) {
+    if (valid2 && valid3)  {
       C22_.updateRangeActual(C22);
       C23_.updateRangeActual(C23);
       C33_.updateRangeActual(C33);
@@ -335,6 +345,7 @@ namespace trackerTFP {
     }
     // R-Phi plane
     bool valid0(true);
+    bool valid1(true);
     const double H00 = H00_.digif(state->H00());
     const double m0 = m0_.digif(state->m0());
     const double v0 = v0_.digif(state->v0());
@@ -379,11 +390,11 @@ namespace trackerTFP {
     if (C11 < 0.)
       throw cms::Exception("NumericInstabillity") << "C11 got negative.";
     // loose slope cut
-    if (fabs(x0) > dataFormats_->base(Variable::qOverPt, Process::mht))
-      valid0 = false;
+    /*if (fabs(x0) > dataFormats_->base(Variable::qOverPt, Process::mht))
+      valid0 = false;*/
     // loose intercept cut
-    if (fabs(x1) > dataFormats_->base(Variable::phiT, Process::mht))
-      valid0 = false;
+    /*if (fabs(x1) > dataFormats_->base(Variable::phiT, Process::mht))
+      valid1 = false;*/
     S00_.updateRangeActual(S00);
     S01_.updateRangeActual(S01);
     K00_.updateRangeActual(K00);
@@ -392,7 +403,7 @@ namespace trackerTFP {
     invR00_.updateRangeActual(invR00);
     r0_.updateRangeActual(r0);
     r02_.updateRangeActual(r02);
-    if (valid0) {
+    if (valid0 && valid1) {
       C00_.updateRangeActual(C00);
       C01_.updateRangeActual(C01);
       C11_.updateRangeActual(C11);
@@ -402,9 +413,9 @@ namespace trackerTFP {
     }
     // global
     const double chi2 = chi20 + chi21;
-    bool valid = valid0 && valid1;
-    if (chi2 > chi2Cut) // chi2 cut
-      valid = false;
+    // chi2 cut
+    const bool valid4 = chi2 < chi2Cut;
+    const bool valid = valid0 && valid1 && valid2 && valid3 && valid4;
     if ( !valid ) {
       state = nullptr;
       return;

@@ -48,14 +48,15 @@ namespace trackerTFP {
     double C22() const { return C22_; }
     double C23() const { return C23_; }
     double C33() const { return C33_; }
-    double chi21() const { return chi20_; }
-    double chi20() const { return chi21_; }
+    double chi20() const { return chi20_; }
+    double chi21() const { return chi21_; }
     double H12() const { return r() + setup_->chosenRofPhi() - setup_->chosenRofZ(); }
     double H00() const { return -r(); }
     double m0() const { return stub_->phi(); }
     double m1() const { return stub_->z(); }
     double v0() const { return setup_->v0(stub_->ttStubRef(), track_->qOverPt()); }
-    double v1() const { return setup_->v1(stub_->ttStubRef(), track_->cot()); }
+    //double v1() const { return setup_->v1(stub_->ttStubRef(), track_->cot()); }
+    double v1() const;
     FrameTrack frame() const;
 
   private:

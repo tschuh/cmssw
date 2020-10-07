@@ -344,8 +344,10 @@ namespace trackerTFP {
   }
 
   TTTrack<Ref_Phase2TrackerDigi_> TrackKF::ttTrack() const {
-    const double qOverPt = this->qOverPt();
-    const double phi0 = this->phiT() + qOverPt * setup()->chosenRofPhi() + dataFormats_->format(Variable::phi, Process::gp).range() * (this->sectorPhi() - .5);
+    const int sectorPhi = frame_.first->phiSector();
+    const int sectorEta = frame_.first->etaSector();
+    const double qOverPt = this->qOverPt() / setup()->invPtToDphi();
+    const double phi0 = deltaPhi(this->phiT() + this->qOverPt() * setup()->chosenRofPhi() + dataFormats_->format(Variable::phiT, Process::ht).range() * (sectorPhi - .5));
     const double cot = this->cot() + setup()->sectorCot(this->sectorEta());
     const double z0 = this->zT() - this->cot() * setup()->chosenRofZ();
     const double chi2phi = 0.;
@@ -356,8 +358,6 @@ namespace trackerTFP {
     const int hitPattern = this->hitPattern().val();
     const int nPar = 4;
     const double bField = 0.;
-    const int sectorPhi = frame_.first->phiSector();
-    const int sectorEta = frame_.first->etaSector();
     TTTrack<Ref_Phase2TrackerDigi_> ttTrack(qOverPt, phi0, cot, z0, chi2phi, chi2z, trkMVA1, trkMVA2, trkMVA3, hitPattern, nPar, bField);
     ttTrack.setStubRefs(ttStubRefs_);
     ttTrack.setPhiSector(sectorPhi);

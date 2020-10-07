@@ -102,6 +102,8 @@ namespace trackerTFP {
     DataFormatKF C23_;
     DataFormatKF C33_;
     DataFormatKF chi2_;
+    //
+    bool debug_;
   };
 
 }

@@ -88,7 +88,7 @@ namespace trackerTFP {
     // pick next stub
     stub_ = nullptr;
     if (hitPattern_.count() != setup_->kfMaxLayers()) {
-      for (int nextLayer = layer + 1; nextLayer < 6; nextLayer++) {
+      for (int nextLayer = layer + 1; nextLayer < setup_->numLayers(); nextLayer++) {
         if (track_->hitPattern(nextLayer)) {
           stub_ = track_->layerStub(nextLayer);
           break;
@@ -100,6 +100,11 @@ namespace trackerTFP {
   FrameTrack State::frame() const {
     TrackKF track(*track_, x1_, x0_, x3_, x2_, hitPattern_, setup_->layerMap(layerMap_));
     return track.frame();
+  }
+
+  double State::v1() const {
+    const double cot = setup_->sectorCot(track_->sectorEta()) + track_->cot();
+    return setup_->v1(stub_->ttStubRef(), cot);
   }
 
 } // namespace trackerTFP

@@ -21,8 +21,8 @@ namespace tt {
     ~StubAssociation() {}
 
     void insert(const TPPtr& tpPtr, const std::vector<TTStubRef>& ttSTubRefs);
-    const std::map<TTStubRef, std::vector<TPPtr>>& getTTStubToTrackingParticlesMap() const;
-    const std::map<TPPtr, std::vector<TTStubRef>>& getTrackingParticleToTTStubsMap() const;
+    const std::map<TTStubRef, std::vector<TPPtr>>& getTTStubToTrackingParticlesMap() const { return mapTTStubRefsTPPtrs_; }
+    const std::map<TPPtr, std::vector<TTStubRef>>& getTrackingParticleToTTStubsMap() const { return mapTPPtrsTTStubRefs_; }
     const std::vector<TPPtr>& findTrackingParticlePtrs(const TTStubRef& ttStubRef) const;
     const std::vector<TTStubRef>& findTTStubRefs(const TPPtr& tpPtr) const;
     int numStubs() const { return mapTTStubRefsTPPtrs_.size(); };

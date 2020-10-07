@@ -18,6 +18,7 @@
 
 #include <TProfile.h>
 #include <TH1F.h>
+#include <TEfficiency.h>
 
 #include <vector>
 #include <deque>
@@ -80,6 +81,9 @@ namespace trackerTFP {
     TProfile* prof_;
     TProfile* profChannel_;
     TH1F* hisChannel_;
+    TH1F* hisEff_;
+    TH1F* hisEffTotal_;
+    TEfficiency* eff_;
 
     // printout
     stringstream log_;
@@ -134,9 +138,14 @@ namespace trackerTFP {
     const int numChannels = dataFormats_->numChannel(Process::mht);
     hisChannel_ = dir.make<TH1F>("His Channel Occupancy", ";", maxOcc, -.5, maxOcc - .5);
     profChannel_ = dir.make<TProfile>("Prof Channel Occupancy", ";", numChannels, -.5, numChannels - .5);
+    // Efficiencies
+    hisEffTotal_ = dir.make<TH1F>("HisTPEtaTotal", ";", 128, -2.5, 2.5);
+    hisEff_ = dir.make<TH1F>("HisTPEta", ";", 128, -2.5, 2.5);
+    eff_ = dir.make<TEfficiency>("EffEta", ";", 128, -2.5, 2.5);
   }
 
   void AnalyzerMHT::analyze(const Event& iEvent, const EventSetup& iSetup) {
+    auto fill = [this](const TPPtr& tpPtr, TH1F* his) { his->Fill(tpPtr->eta()); };
     // read in ht products
     Handle<TTDTC::Streams> handleAccepted;
     iEvent.getByToken<TTDTC::Streams>(edGetTokenAccepted_, handleAccepted);
@@ -153,6 +162,8 @@ namespace trackerTFP {
       Handle<StubAssociation> handleReconstructable;
       iEvent.getByToken<StubAssociation>(edGetTokenReconstructable_, handleReconstructable);
       reconstructable = handleReconstructable.product();
+      for (const auto& p : selection->getTrackingParticleToTTStubsMap())
+        fill(p.first, hisEffTotal_);
     }
     // analyze ht products and associate found tracks with reconstrucable TrackingParticles
     set<TPPtr> tpPtrs;
@@ -188,6 +199,8 @@ namespace trackerTFP {
       prof_->Fill(2, nTracks);
       prof_->Fill(3, nLost);
     }
+    for (const TPPtr& tpPtr : tpPtrsSelection)
+      fill(tpPtr, hisEff_);
     vector<TPPtr> recovered;
     recovered.reserve(tpPtrsLost.size());
     set_intersection(tpPtrsLost.begin(), tpPtrsLost.end(), tpPtrs.begin(), tpPtrs.end(), back_inserter(recovered));
@@ -202,6 +215,9 @@ namespace trackerTFP {
   }
 
   void AnalyzerMHT::endJob() {
+    // effi
+    eff_->SetPassedHistogram(*hisEff_, "f");
+    eff_->SetTotalHistogram (*hisEffTotal_, "f");
     // printout MHT summary
     const double totalTPs = prof_->GetBinContent(9);
     const double numStubs = prof_->GetBinContent(1);
