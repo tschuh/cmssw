@@ -263,6 +263,19 @@ namespace trackerTFP {
     // accumulator delivers contigious stream of best state per track
     // remove gaps and not final states
     stream.erase(remove_if(stream.begin(), stream.end(), [](State* state){ return !state || state->hitPattern().count() < 4; }), stream.end());
+    // cut on correction size
+    auto cut = [this](State* state) {
+      /*if (fabs(state->x0()) > dataFormats_->base(Variable::qOverPt, Process::mht))
+        return true;
+      if (fabs(state->x1()) > dataFormats_->base(Variable::phiT, Process::mht))
+        return true;
+      if (fabs(state->x2()) > 2. * dataFormats_->base(Variable::cot, Process::sf))
+        return true;
+      if (fabs(state->x3()) > 2. * dataFormats_->base(Variable::zT, Process::sf))
+        return true;*/
+      return false;
+    };
+    stream.erase(remove_if(stream.begin(), stream.end(), cut), stream.end());
     // sort in quality (combination of chi2 and skipped layers)
     stable_sort(stream.begin(), stream.end(), [](State* lhs, State* rhs){ return lhs->quali() < rhs->quali();  });
     // sort in track id

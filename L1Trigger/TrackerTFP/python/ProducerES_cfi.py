@@ -10,10 +10,10 @@ TrackTriggerDataFormats_params = cms.PSet (
   ),
 
   DuplicateRemoval = cms.PSet (
-    WidthPhi0    = cms.int32( 12 - 2 ), # number of bist used for phi0
-    WidthQoverPt = cms.int32( 15 - 5 ), # number of bist used for qOverPt
-    WidthCot     = cms.int32( 16 - 6 ), # number of bist used for cot(theta)
-    WidthZ0      = cms.int32( 12 - 2 )  # number of bist used for z0
+    WidthPhi0    = cms.int32( 12 ), # number of bist used for phi0
+    WidthQoverPt = cms.int32( 15 ), # number of bist used for qOverPt
+    WidthCot     = cms.int32( 16 ), # number of bist used for cot(theta)
+    WidthZ0      = cms.int32( 12 )  # number of bist used for z0
   ),
 
 )

@@ -31,7 +31,7 @@ typedef edm::Ref<TTClusterDetSetVec, TTCluster<Ref_Phase2TrackerDigi_>> TTCluste
 typedef edmNew::DetSet<TTStub<Ref_Phase2TrackerDigi_>> TTStubDetSet;
 
 typedef edm::Ref<std::vector<TTTrack<Ref_Phase2TrackerDigi_>>, TTTrack<Ref_Phase2TrackerDigi_>> TTTrackRef;
-typedef std::pair<TTTrackRef, std::bitset<64>> FrameTrack;
+typedef std::pair<TTTrackRef, std::bitset<128>> FrameTrack;
 typedef std::vector<FrameTrack> StreamTrack;
 typedef std::vector<StreamTrack> StreamsTrack;
 

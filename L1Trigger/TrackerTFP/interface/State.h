@@ -37,7 +37,9 @@ namespace trackerTFP {
     bool barrel() const { return setup_->barrel(stub_->ttStubRef()); }
     bool psModule() const { return setup_->psModule(stub_->ttStubRef()); }
     int layer() const { return stub_->layer(); }
-    double quali() const { return (chi20_ / 8. + chi21_) * pow(2, (hitPattern_.count(0, hitPattern_.pmEncode(), false))); }
+    //double quali() const { return (chi20_ / 8. + chi21_) * pow(2, (hitPattern_.count(0, hitPattern_.pmEncode(), false))); }
+    //double quali() const { return chi2(); }
+    double quali() const { return (chi20_ / 8. + chi21_); }
     double x0() const { return x0_; }
     double x1() const { return x1_; }
     double x2() const { return x2_; }

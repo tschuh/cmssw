@@ -129,8 +129,6 @@ namespace trackerTFP {
   void DataFormats::attachTrack(const tuple<Ts...>& data, TTBV& ttBV, Process p) const {
     Variable v = *next(tracks_[+p].begin(), it);
     formats_[+v][+p]->attach(get<it>(data), ttBV);
-    //if (p == Process::kf)
-      //cout << ttBV << " " << get<it>(data) << endl;
     if constexpr(it + 1 != sizeof...(Ts))
       attachTrack<it + 1>(data, ttBV, p);
   }
