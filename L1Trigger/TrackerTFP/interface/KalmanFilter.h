@@ -8,12 +8,14 @@
 
 #include <deque>
 
+#include <TH1F.h>
+
 namespace trackerTFP {
 
   // Class to fit in a region tracks
   class KalmanFilter {
   public:
-    KalmanFilter(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup, const DataFormats* dataFormats, const KalmanFilterFormats* kalmanFilterFormats, int region);
+    KalmanFilter(const edm::ParameterSet& iConfig, const trackerDTC::Setup* setup, const DataFormats* dataFormats, const KalmanFilterFormats* kalmanFilterFormats, int region, std::vector<TH1F*> histos);
     ~KalmanFilter(){}
 
     // read in and organize input stubs
@@ -103,7 +105,7 @@ namespace trackerTFP {
     DataFormatKF C33_;
     DataFormatKF chi2_;
     //
-    bool debug_;
+    std::vector<TH1F*> histos_;
   };
 
 }

@@ -15,8 +15,9 @@ using namespace trackerDTC;
 
 namespace trackerTFP {
 
-  KalmanFilter::KalmanFilter(const ParameterSet& iConfig, const Setup* setup, const DataFormats* dataFormats, const KalmanFilterFormats* kalmanFilterFormats, int region) :
-    enableTruncation_(iConfig.getParameter<bool>("EnableTruncation")),
+  KalmanFilter::KalmanFilter(const ParameterSet& iConfig, const Setup* setup, const DataFormats* dataFormats, const KalmanFilterFormats* kalmanFilterFormats, int region, vector<TH1F*> histos) :
+    //enableTruncation_(iConfig.getParameter<bool>("EnableTruncation")),
+    enableTruncation_(false),
     setup_(setup),
     dataFormats_(dataFormats),
     kalmanFilterFormats_(kalmanFilterFormats),
@@ -59,7 +60,7 @@ namespace trackerTFP {
     C22_(kalmanFilterFormats_->format(VariableKF::C22)),
     C23_(kalmanFilterFormats_->format(VariableKF::C23)),
     C33_(kalmanFilterFormats_->format(VariableKF::C33)),
-    chi2_(kalmanFilterFormats_->format(VariableKF::chi2)) {}
+    chi2_(kalmanFilterFormats_->format(VariableKF::chi2)), histos_(histos) {}
 
   // read in and organize input stubs
   void KalmanFilter::consume(const TTDTC::Streams& stubs) {
@@ -167,6 +168,15 @@ namespace trackerTFP {
     };
     statesLost.erase(remove_if(statesLost.begin(), statesLost.end(), recovered), statesLost.end());
     put(statesLost, lost);
+    for (State* state : statesAccepted) {
+      histos_[0]->Fill(state->C00());
+      histos_[1]->Fill(state->C01());
+      histos_[2]->Fill(state->C11());
+      histos_[3]->Fill(state->C22());
+      histos_[4]->Fill(state->C23());
+      histos_[5]->Fill(state->C33());
+      histos_[6]->Fill(state->chi2() / 2.);
+    }
   }
 
   // hit pattern check

@@ -48,27 +48,32 @@ import FWCore.ParameterSet.VarParsing as VarParsing
 options = VarParsing.VarParsing( 'analysis' )
 # specify input MC
 Samples = {
-  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt2To100/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/0C1BB1E7-6289-E944-8480-71ED80F95DDF.root'
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/0330453B-9B8E-CA41-88B0-A047B68D1AF9.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/02180D14-024D-ED46-9899-B275EADB82CE.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/0207F436-9BAC-904D-B86A-C2CE18CC2A46.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/01323A12-1A0B-AE43-B7AB-BAAE294E4EFA.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D87319E3-F541-5840-AA58-10F84ACE1523.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D7384F02-54C2-AB49-AEF3-E4E7303541CA.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D3629C85-EA34-C147-AC4D-939C41DEC68A.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D253E174-69A1-A544-9719-0D9BFDAD5320.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D0D41CBC-08BA-E14E-8FE9-BD982CC6CA95.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CD22CEB0-26EE-3147-8076-82926A26FAD4.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CB67FBC0-0BF9-BE4E-A6D6-1388B2B2D2BF.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CB36BB1A-67D7-C04D-ADB9-50DEB9B49E73.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C9DEB7AA-E520-8C4C-AE74-A482BF59B048.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C8ABAD54-6291-FA44-92E1-5BEECB1D6793.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C74CD357-330E-E442-8F9F-C060CA44964A.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C6BD36D2-79B9-2142-9A17-1CCC4FA2DDF1.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C5DE1FC8-F963-7641-8020-451DB641C609.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C57720E8-F837-0448-8483-D06474BB316B.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C41FF339-435A-EC4A-A830-3D9DB7630B0A.root',
-  '/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C38AE82D-587E-C34B-89DC-FBAE92696270.root'
+  '/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt2To100/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/0C1BB1E7-6289-E944-8480-71ED80F95DDF.root'
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt0p7To10/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/152DC2AD-0CC3-5C46-8A62-2058D718BF3A.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt0p7To10/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/60809674-BF62-FE48-A6C3-FD676D2FB236.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt0p7To10/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/69DB14E4-2ACB-564F-8812-9E0DE39472E2.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt0p7To10/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/AA1C0BBD-AAEC-9D4B-8D47-53A92AA08AAB.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValSingleMuFlatPt0p7To10/GEN-SIM-DIGI-RAW/110X_mcRun4_realistic_v2_2026D49noPU-v1/20000/F4FDFC8D-95E1-0B4A-8E50-997F70B4D1FD.root'
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/0330453B-9B8E-CA41-88B0-A047B68D1AF9.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/02180D14-024D-ED46-9899-B275EADB82CE.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/0207F436-9BAC-904D-B86A-C2CE18CC2A46.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/01323A12-1A0B-AE43-B7AB-BAAE294E4EFA.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D87319E3-F541-5840-AA58-10F84ACE1523.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D7384F02-54C2-AB49-AEF3-E4E7303541CA.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D3629C85-EA34-C147-AC4D-939C41DEC68A.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D253E174-69A1-A544-9719-0D9BFDAD5320.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/D0D41CBC-08BA-E14E-8FE9-BD982CC6CA95.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CD22CEB0-26EE-3147-8076-82926A26FAD4.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CB67FBC0-0BF9-BE4E-A6D6-1388B2B2D2BF.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/CB36BB1A-67D7-C04D-ADB9-50DEB9B49E73.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C9DEB7AA-E520-8C4C-AE74-A482BF59B048.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C8ABAD54-6291-FA44-92E1-5BEECB1D6793.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C74CD357-330E-E442-8F9F-C060CA44964A.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C6BD36D2-79B9-2142-9A17-1CCC4FA2DDF1.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C5DE1FC8-F963-7641-8020-451DB641C609.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C57720E8-F837-0448-8483-D06474BB316B.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C41FF339-435A-EC4A-A830-3D9DB7630B0A.root',
+  #'/store/relval/CMSSW_11_1_0_pre1/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v2_2026D49PU200_ext1-v1/20000/C38AE82D-587E-C34B-89DC-FBAE92696270.root'
 }
 options.register( 'inputMC', Samples, VarParsing.VarParsing.multiplicity.singleton, VarParsing.VarParsing.varType.string, "Files to be processed" )
 # specify number of events to process.
@@ -80,7 +85,7 @@ process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(options.Even
 process.source = cms.Source(
   "PoolSource",
   fileNames = cms.untracked.vstring( options.inputMC ),
-  #skipEvents = cms.untracked.uint32( 8 ),
+  skipEvents = cms.untracked.uint32( 12 ),
   secondaryFileNames = cms.untracked.vstring(),
   duplicateCheckMode = cms.untracked.string( 'noDuplicateCheck' )
 )

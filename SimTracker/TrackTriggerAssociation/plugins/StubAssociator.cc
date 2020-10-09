@@ -42,24 +42,38 @@ namespace tt {
     void produce(Event&, const EventSetup&) override;
     void endJob() {}
 
+    //
+    void fill(set<TPPtr>& tpPtrs, const TTStubRef& ttStubRef, const Handle<TTClusterAssMap>& handle) const;
+    //
+    void fill(set<TPPtr>& tpPtrs, const TTStubRef& ttStubRef, const Handle<TTStubAssMap>& handle) const;
+
     // helper classe to store configurations
     const trackerDTC::Setup* setup_;
     // ED input token of TTStubs
     EDGetTokenT<TTStubDetSetVec> getTokenTTStubDetSetVec_;
     // ED input token of TTClusterAssociation
     EDGetTokenT<TTClusterAssMap> getTokenTTClusterAssMap_;
+    // ED input token of TTStubAssociation
+    EDGetTokenT<TTStubAssMap> getTokenTTStubAssMap_;
     // ED output token for recosntructable stub association
     EDPutTokenT<StubAssociation> putTokenReconstructable_;
     // ED output token for selected stub association
     EDPutTokenT<StubAssociation> putTokenSelection_;
     // Setup token
     ESGetToken<trackerDTC::Setup, trackerDTC::SetupRcd> esGetToken_;
+    //
+    bool useTTStubAssMap_;
   };
 
-  StubAssociator::StubAssociator(const ParameterSet& iConfig) {
+  StubAssociator::StubAssociator(const ParameterSet& iConfig) :
+    useTTStubAssMap_(iConfig.getParameter<bool>("UseTTStubAssMap"))
+  {
     // book in- and output ed products
     getTokenTTStubDetSetVec_ = consumes<TTStubDetSetVec>(iConfig.getParameter<InputTag>("InputTagTTStubDetSetVec"));
-    getTokenTTClusterAssMap_ = consumes<TTClusterAssMap>(iConfig.getParameter<InputTag>("InputTagTTClusterAssMap"));
+    if (useTTStubAssMap_)
+      getTokenTTStubAssMap_ = consumes<TTStubAssMap>(iConfig.getParameter<InputTag>("InputTagTTStubAssMap"));
+    else
+      getTokenTTClusterAssMap_ = consumes<TTClusterAssMap>(iConfig.getParameter<InputTag>("InputTagTTClusterAssMap"));
     putTokenReconstructable_ = produces<StubAssociation>(iConfig.getParameter<string>("BranchReconstructable"));
     putTokenSelection_ = produces<StubAssociation>(iConfig.getParameter<string>("BranchSelection"));
     // book ES product
@@ -72,23 +86,27 @@ namespace tt {
 
   void StubAssociator::produce(Event& iEvent, const EventSetup& iSetup) {
     // associate TTStubs with TrackingParticles
-    auto isNonnull = [](const TPPtr& tpPtr){ return tpPtr.isNonnull(); };
-    Handle<TTClusterAssMap> handleTTClusterAssMap;
-    iEvent.getByToken<TTClusterAssMap>(getTokenTTClusterAssMap_, handleTTClusterAssMap);
     Handle<TTStubDetSetVec> handleTTStubDetSetVec;
     iEvent.getByToken<TTStubDetSetVec>(getTokenTTStubDetSetVec_, handleTTStubDetSetVec);
+    Handle<TTClusterAssMap> handleTTClusterAssMap;
+    Handle<TTStubAssMap> handleTTStubAssMap;
+    if (useTTStubAssMap_)
+      iEvent.getByToken<TTStubAssMap>(getTokenTTStubAssMap_, handleTTStubAssMap);
+    else
+      iEvent.getByToken<TTClusterAssMap>(getTokenTTClusterAssMap_, handleTTClusterAssMap);
     map<TPPtr, vector<TTStubRef>> mapTPPtrsTTStubRefs;
     for (TTStubDetSetVec::const_iterator ttModule = handleTTStubDetSetVec->begin();
-         ttModule != handleTTStubDetSetVec->end();
-         ttModule++) {
+        ttModule != handleTTStubDetSetVec->end();
+        ttModule++) {
       for (TTStubDetSet::const_iterator ttStub = ttModule->begin(); ttStub != ttModule->end(); ttStub++) {
+        const TTStubRef ttStubRef = makeRefTo(handleTTStubDetSetVec, ttStub);
         set<TPPtr> tpPtrs;
-        for (unsigned int iClus = 0; iClus < 2; iClus++) {
-          const vector<TPPtr>& assocPtrs = handleTTClusterAssMap->findTrackingParticlePtrs(ttStub->clusterRef(iClus));
-          copy_if(assocPtrs.begin(), assocPtrs.end(), inserter(tpPtrs, tpPtrs.begin()), isNonnull);
-        }
+        if (useTTStubAssMap_)
+          fill(tpPtrs, ttStubRef, handleTTStubAssMap);
+        else
+          fill(tpPtrs, ttStubRef, handleTTClusterAssMap);
         for (const TPPtr& tpPtr : tpPtrs)
-          mapTPPtrsTTStubRefs[tpPtr].emplace_back(makeRefTo(handleTTStubDetSetVec, ttStub));
+          mapTPPtrsTTStubRefs[tpPtr].push_back(ttStubRef);
       }
     }
     // associate reconstructable TrackingParticles with TTStubs
@@ -103,6 +121,22 @@ namespace tt {
     }
     iEvent.emplace(putTokenReconstructable_, move(reconstructable));
     iEvent.emplace(putTokenSelection_, move(selection));
+  }
+
+  //
+  void StubAssociator::fill(set<TPPtr>& tpPtrs, const TTStubRef& ttStubRef, const Handle<TTClusterAssMap>& handle) const {
+    auto isNonnull = [](const TPPtr& tpPtr){ return tpPtr.isNonnull(); };
+    for (unsigned int iClus = 0; iClus < 2; iClus++) {
+      const vector<TPPtr>& assocPtrs = handle->findTrackingParticlePtrs(ttStubRef->clusterRef(iClus));
+      copy_if(assocPtrs.begin(), assocPtrs.end(), inserter(tpPtrs, tpPtrs.begin()), isNonnull);
+    }
+  }
+
+  //
+  void StubAssociator::fill(set<TPPtr>& tpPtrs, const TTStubRef& ttStubRef, const Handle<TTStubAssMap>& handle) const {
+    const TPPtr tpPtr = handle->findTrackingParticlePtr(ttStubRef);
+    if (tpPtr.isNonnull())
+      tpPtrs.insert(tpPtr);
   }
 
 } // namespace tt
