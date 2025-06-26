@@ -18,6 +18,8 @@
     <use   name="Geometry/CommonDetUnit"/>
     <use   name="Geometry/Records"/>
     <use   name="Geometry/TrackerGeometryBuilder"/>
+    <use   name="L1Trigger/L1TTrackMatch"/>
+    <use   name="L1Trigger/TrackTrigger"/>
     <use   name="SimTracker/TrackTriggerAssociation"/>
     <use   name="SimDataFormats/Associations"/>
     <use   name="SimDataFormats/TrackingHit"/>

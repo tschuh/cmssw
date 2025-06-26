@@ -68,6 +68,9 @@ namespace tt {
   typedef std::vector<Stream> Streams;
   typedef std::map<TTTrackRef, TTTrackRef> TTTrackRefMap;
   typedef std::vector<TTTrack<Ref_Phase2TrackerDigi_>> TTTracks;
+  // used by GTT emulators
+  typedef std::vector<TTTrackRef> StreamTT;
+  typedef std::vector<StreamTT> StreamsTT;
 }  // namespace tt
 
 #endif

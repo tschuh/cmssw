@@ -41,9 +41,11 @@
   <class name="tt::StreamsStub"/>
   <class name="tt::StreamsTrack"/>
   <class name="tt::Streams"/>
+  <class name="tt::StreamsTT"/>
   <class name="edm::Wrapper<tt::StreamsStub>"/>
   <class name="edm::Wrapper<tt::StreamsTrack>"/>
   <class name="edm::Wrapper<tt::Streams>"/>
+  <class name="edm::Wrapper<tt::StreamsTT>"/>
   <class name="tt::TTTracks"/>
   <class name="edm::Wrapper<tt::TTTracks>"/>
   <class name="std::pair<const TTTrackRef, TTTrackRef>"/>
